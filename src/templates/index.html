@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}Painel - Copa EA FC 26{% endblock %}
+
+{% block content %}
+<div class="mb-8">
+    <h1 class="text-3xl font-bold text-white mb-2">Painel</h1>
+    <p class="text-dark-400">
+        {% if state.phase.value == 'draft' %}
+            Fase atual: Sorteio de jogadores
+        {% elif state.phase.value == 'group_stage' %}
+            Fase atual: Fase de Grupos &mdash; Rodada {{ state.current_match_day }}
+        {% elif state.phase.value == 'bracket' %}
+            Fase atual: Chaveamento (Eliminatorias)
+        {% elif state.phase.value == 'finished' %}
+            Torneio finalizado!
+        {% endif %}
+    </p>
+</div>
+
+{% if not teams %}
+<div class="card p-8 text-center">
+    <p class="text-dark-400 text-lg mb-4">Nenhuma selecao cadastrada ainda.</p>
+    <p class="text-dark-500">Para comecar, execute no terminal o comando:<br>
+    <code class="bg-dark-800 px-3 py-1 rounded text-wc-teal mt-2 inline-block">make draft</code></p>
+</div>
+{% else %}
+
+<!-- Stats Cards -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+    <div class="card p-5">
+        <p class="text-dark-400 text-sm mb-1">Selecoes</p>
+        <p class="text-3xl font-bold text-white">{{ teams|length }}</p>
+    </div>
+    <div class="card p-5">
+        <p class="text-dark-400 text-sm mb-1">Jogos Realizados</p>
+        <p class="text-3xl font-bold text-white">{{ played_matches }}<span class="text-lg text-dark-500">/{{ total_matches }}</span></p>
+    </div>
+    <div class="card p-5">
+        <p class="text-dark-400 text-sm mb-1">Fase</p>
+        <p class="text-xl font-bold text-wc-teal">
+            {% if state.phase.value == 'group_stage' %}Fase de Grupos{% elif state.phase.value == 'bracket' %}Chaveamento{% elif state.phase.value == 'draft' %}Sorteio{% else %}Fim{% endif %}
+        </p>
+    </div>
+    <div class="card p-5">
+        <p class="text-dark-400 text-sm mb-1">Artilheiro</p>
+        {% if top_scorers %}
+        <p class="text-xl font-bold text-white">{{ top_scorers[0].player_name }}</p>
+        <p class="text-sm text-wc-gold">{{ top_scorers[0].goals }} gols</p>
+        {% else %}
+        <p class="text-xl font-bold text-dark-500">-</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Standings Mini -->
+    <div class="lg:col-span-2">
+        <div class="card p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-semibold text-white">Classificacao</h2>
+                <a href="/standings" class="text-wc-teal text-sm hover:underline">Ver completa</a>
+            </div>
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="text-dark-400 border-b border-dark-700">
+                        <th class="py-2 text-left w-8">#</th>
+                        <th class="py-2 text-left">Selecao</th>
+                        <th class="py-2 text-center">J</th>
+                        <th class="py-2 text-center">V</th>
+                        <th class="py-2 text-center">E</th>
+                        <th class="py-2 text-center">D</th>
+                        <th class="py-2 text-center">SG</th>
+                        <th class="py-2 text-center font-bold">Pts</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in standings %}
+                    <tr class="table-row border-b border-dark-800 {% if row.position <= 4 %}border-l-2 border-l-wc-teal{% elif row.position <= 6 %}border-l-2 border-l-wc-orange{% endif %}">
+                        <td class="py-2 text-dark-400">{{ row.position }}</td>
+                        <td class="py-2 font-medium text-white">
+                            <span class="mr-1">{{ team_flags.get(row.team_name, '') }}</span>{{ row.team_name }}
+                            <span class="text-dark-500 ml-1 text-xs">{{ row.owner }}</span>
+                        </td>
+                        <td class="py-2 text-center">{{ row.played }}</td>
+                        <td class="py-2 text-center text-pitch-400">{{ row.wins }}</td>
+                        <td class="py-2 text-center text-dark-400">{{ row.draws }}</td>
+                        <td class="py-2 text-center text-red-400">{{ row.losses }}</td>
+                        <td class="py-2 text-center">{{ row.goal_difference }}</td>
+                        <td class="py-2 text-center font-bold text-white">{{ row.points }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% if standings %}
+            <div class="mt-3 flex gap-4 text-xs text-dark-500">
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-wc-teal"></span> Classificado direto (1-4)</span>
+                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-wc-orange"></span> Repescagem (5-6)</span>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="space-y-6">
+        <!-- Top Scorers -->
+        <div class="card p-6">
+            <h2 class="text-lg font-semibold text-white mb-4">Artilharia</h2>
+            {% if top_scorers %}
+            <div class="space-y-3">
+                {% for scorer in top_scorers %}
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-white font-medium">{{ scorer.player_name }}</p>
+                        <p class="text-dark-500 text-xs">
+                            {% if scorer.team_id in team_map %}
+                            {{ team_flags.get(team_map[scorer.team_id].name, '') }} {{ team_map[scorer.team_id].name }}
+                            {% endif %}
+                        </p>
+                    </div>
+                    <span class="bg-wc-navy text-wc-gold px-2 py-1 rounded text-sm font-bold">{{ scorer.goals }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-dark-500 text-sm">Nenhum gol marcado ainda.</p>
+            {% endif %}
+        </div>
+
+        <!-- Upcoming Matches -->
+        <div class="card p-6">
+            <h2 class="text-lg font-semibold text-white mb-4">Proximos Jogos</h2>
+            {% if upcoming_matches %}
+            <div class="space-y-3">
+                {% for m in upcoming_matches %}
+                <div class="flex items-center justify-between text-sm bg-dark-800 rounded-lg p-3">
+                    <span class="text-white font-medium">{{ team_flags.get(team_map[m.home_team_id].name, '') if m.home_team_id in team_map else '' }} {{ team_map[m.home_team_id].name if m.home_team_id in team_map else '?' }}</span>
+                    <span class="text-dark-500 text-xs">vs</span>
+                    <span class="text-white font-medium">{{ team_flags.get(team_map[m.away_team_id].name, '') if m.away_team_id in team_map else '' }} {{ team_map[m.away_team_id].name if m.away_team_id in team_map else '?' }}</span>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-dark-500 text-sm">Nenhum jogo agendado.</p>
+            {% endif %}
+        </div>
+
+        <!-- Recent Results -->
+        <div class="card p-6">
+            <h2 class="text-lg font-semibold text-white mb-4">Resultados Recentes</h2>
+            {% if recent_matches %}
+            <div class="space-y-3">
+                {% for m in recent_matches %}
+                <a href="/matches/{{ m.id }}" class="flex items-center justify-between text-sm bg-dark-800 rounded-lg p-3 hover:bg-dark-700 transition">
+                    <span class="text-white font-medium">{{ team_flags.get(team_map[m.home_team_id].name, '') if m.home_team_id in team_map else '' }} {{ team_map[m.home_team_id].name if m.home_team_id in team_map else '?' }}</span>
+                    <span class="text-wc-teal font-bold">{{ m.home_score }} - {{ m.away_score }}</span>
+                    <span class="text-white font-medium">{{ team_flags.get(team_map[m.away_team_id].name, '') if m.away_team_id in team_map else '' }} {{ team_map[m.away_team_id].name if m.away_team_id in team_map else '?' }}</span>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-dark-500 text-sm">Nenhum resultado ainda.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

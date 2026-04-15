@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}Chaveamento - Copa EA FC 26{% endblock %}
+
+{% block extra_head %}
+<style>
+    .bracket-match {
+        background: #1e293b;
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 12px 16px;
+        min-width: 240px;
+    }
+    .bracket-match.winner { border-color: #00B4D8; }
+    .bracket-team {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 4px 0;
+    }
+    .bracket-team.is-winner { color: #D4AF37; font-weight: 700; }
+    .bracket-team.is-loser { color: #64748b; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1 class="text-3xl font-bold text-white mb-2">Chaveamento — Fase eliminatoria</h1>
+<p class="text-dark-400 mb-8">Criterio de desempate: posicao na fase de grupos</p>
+
+{% macro match_card(phase_key, label) %}
+{% set data = bracket.get(phase_key) %}
+<div class="bracket-match {% if data and data.winner_id %}winner{% endif %}">
+    <p class="text-xs text-wc-teal font-medium mb-2">{{ label }}</p>
+    {% if data %}
+    {% set m = data.match %}
+    {% set ht = data.home_team %}
+    {% set at = data.away_team %}
+    <a href="/matches/{{ m.id }}" class="block hover:opacity-80 transition">
+        <div class="bracket-team {% if data.winner_id == m.home_team_id %}is-winner{% elif data.winner_id %}is-loser{% endif %}">
+            <span>{{ team_flags.get(ht.name, '') if ht else '' }} {{ ht.name if ht else 'A definir' }}</span>
+            <span class="font-bold">{{ m.home_score if m.played else '' }}</span>
+        </div>
+        <div class="border-t border-dark-700 my-1"></div>
+        <div class="bracket-team {% if data.winner_id == m.away_team_id %}is-winner{% elif data.winner_id %}is-loser{% endif %}">
+            <span>{{ team_flags.get(at.name, '') if at else '' }} {{ at.name if at else 'A definir' }}</span>
+            <span class="font-bold">{{ m.away_score if m.played else '' }}</span>
+        </div>
+    </a>
+    {% else %}
+    <div class="bracket-team text-dark-600">
+        <span>A definir</span><span>-</span>
+    </div>
+    <div class="border-t border-dark-700 my-1"></div>
+    <div class="bracket-team text-dark-600">
+        <span>A definir</span><span>-</span>
+    </div>
+    {% endif %}
+</div>
+{% endmacro %}
+
+<!-- Bracket Layout -->
+<div class="overflow-x-auto pb-8">
+    <div class="min-w-[1000px]">
+
+        <div class="mb-3">
+            <span class="text-sm font-bold text-wc-teal bg-wc-navy px-3 py-1 rounded">CHAVE SUPERIOR</span>
+        </div>
+
+        <div class="flex items-start gap-8 mb-10">
+            <div class="flex flex-col gap-6">
+                {{ match_card("quarter_1v4", "1o vs 4o") }}
+                {{ match_card("quarter_2v3", "2o vs 3o") }}
+            </div>
+            <div class="flex flex-col justify-center h-full mt-16">
+                <div class="w-8 border-t-2 border-dark-600"></div>
+            </div>
+            <div class="flex flex-col justify-center mt-8">
+                {{ match_card("upper_semi", "Semifinal (chave superior)") }}
+            </div>
+            <div class="flex flex-col justify-center mt-8">
+                <div class="w-8 border-t-2 border-dark-600"></div>
+            </div>
+            <div class="flex flex-col justify-center mt-8">
+                {{ match_card("grand_final", "GRANDE FINAL 🏆") }}
+            </div>
+        </div>
+
+        <div class="mb-3">
+            <span class="text-sm font-bold text-wc-orange bg-wc-navy px-3 py-1 rounded">CHAVE INFERIOR</span>
+        </div>
+
+        <div class="flex items-start gap-8">
+            <div class="flex flex-col gap-6">
+                {{ match_card("quarter_5v6", "5o vs 6o") }}
+            </div>
+            <div class="flex flex-col justify-center mt-6">
+                <div class="w-8 border-t-2 border-dark-600"></div>
+            </div>
+            <div class="flex flex-col justify-center">
+                {{ match_card("lower_r1", "Chave inferior — 1a rodada") }}
+            </div>
+            <div class="flex flex-col justify-center mt-0">
+                <div class="w-8 border-t-2 border-dark-600"></div>
+            </div>
+            <div class="flex flex-col justify-center">
+                {{ match_card("lower_r2", "Chave inferior — 2a rodada") }}
+            </div>
+            <div class="flex flex-col justify-center mt-0">
+                <div class="w-8 border-t-2 border-dark-600"></div>
+            </div>
+            <div class="flex flex-col justify-center">
+                {{ match_card("lower_final", "Final da chave inferior") }}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bracket Flow Explanation -->
+<div class="card p-6 mt-4">
+    <h3 class="text-sm font-semibold text-white mb-3">Como funciona</h3>
+    <div class="text-sm text-dark-400 space-y-1">
+        <p>1. Quartas na chave superior: 1o vs 4o e 2o vs 3o; entrada na chave inferior: 5o vs 6o</p>
+        <p>2. Semifinal (chave superior): vencedores das quartas da chave superior se enfrentam</p>
+        <p>3. Chave inferior — 1a rodada: vencedor do 5o vs 6o enfrenta o perdedor do 1o vs 4o</p>
+        <p>4. Chave inferior — 2a rodada: vencedor da 1a rodada inferior enfrenta o perdedor do 2o vs 3o</p>
+        <p>5. Final da chave inferior: perdedor da semifinal superior enfrenta o vencedor da 2a rodada inferior</p>
+        <p>6. Grande final: vencedor da semifinal superior vs vencedor da final inferior</p>
+        <p class="text-dark-500 mt-2">Desempate: posicao na fase de grupos</p>
+    </div>
+</div>
+{% endblock %}

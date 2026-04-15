@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Selecoes - Copa EA FC 26</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-[#020617] text-[#e2e8f0] min-h-screen flex flex-col">
+    <div id="header"></div>
+    <main id="content" class="max-w-7xl mx-auto px-4 py-8 flex-1 w-full">
+        <p class="text-[#64748b] text-center py-20">Carregando...</p>
+    </main>
+    <div id="footer"></div>
+    <script src="js/app.js"></script>
+    <script>
+        App.init();
+        (async () => {
+            const [teams, players] = await Promise.all([App.loadJSON('teams'), App.loadJSON('players')]);
+            const playerMap = {};
+            players.forEach(p => playerMap[p.id] = p);
+            const groups = ['GK', 'DEF', 'MID', 'FWD'];
+            const badgeClass = { GK: 'badge-gk', DEF: 'badge-def', MID: 'badge-mid', FWD: 'badge-fwd' };
+
+            const cards = teams.map(team => {
+                const tp = team.players.map(id => playerMap[id]).filter(Boolean);
+                const avg = tp.length ? (tp.reduce((s, p) => s + p.overall, 0) / tp.length).toFixed(1) : '0.0';
+                const groupStats = groups.map(g => {
+                    const gp = tp.filter(p => p.position_group === g);
+                    const gAvg = gp.length ? (gp.reduce((s, p) => s + p.overall, 0) / gp.length).toFixed(1) : '0.0';
+                    return `<div class="text-center">
+                        <span class="inline-block px-2 py-0.5 rounded text-xs font-bold mb-1 ${badgeClass[g]}">${g}</span>
+                        <p class="text-white font-semibold">${gAvg}</p>
+                        <p class="text-[#475569] text-xs">${gp.length} jogadores</p>
+                    </div>`;
+                }).join('');
+                return `<a href="team.html?id=${team.id}" class="card p-6 hover:border-[#00B4D8] transition group relative overflow-hidden">
+                    <div class="absolute top-0 right-0 text-8xl opacity-5 -mr-4 -mt-4 select-none">${App.flag(team.name)}</div>
+                    <div class="flex items-center justify-between mb-4 relative">
+                        <div>
+                            <h2 class="text-xl font-bold text-white group-hover:text-[#00B4D8] transition"><span class="mr-2">${App.flag(team.name)}</span>${team.name}</h2>
+                            <p class="text-[#94a3b8] text-sm">${team.owner}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-3xl font-bold text-white">${avg}</p>
+                            <p class="text-[#475569] text-xs">Overall medio</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-4 gap-3 relative">${groupStats}</div>
+                </a>`;
+            }).join('');
+
+            App.html('content', `
+                <h1 class="text-3xl font-bold text-white mb-8">Selecoes</h1>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">${cards}</div>
+            `);
+        })();
+    </script>
+</body>
+</html>

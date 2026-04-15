@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Classificacao - Copa EA FC 26</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-[#020617] text-[#e2e8f0] min-h-screen flex flex-col">
+    <div id="header"></div>
+    <main id="content" class="max-w-7xl mx-auto px-4 py-8 flex-1 w-full">
+        <p class="text-[#64748b] text-center py-20">Carregando...</p>
+    </main>
+    <div id="footer"></div>
+    <script src="js/app.js"></script>
+    <script>
+        App.init();
+        (async () => {
+            const [teams, matches] = await Promise.all([App.loadJSON('teams'), App.loadJSON('matches')]);
+            const standings = App.computeStandings(matches, teams);
+
+            const rows = standings.map(r => {
+                let borderColor = 'border-l-[#C8102E]';
+                let posColor = 'text-[#f87171]';
+                if (r.position === 1) { borderColor = 'border-l-[#00B4D8]'; posColor = 'text-[#D4AF37]'; }
+                else if (r.position <= 4) { borderColor = 'border-l-[#00B4D8]'; posColor = 'text-[#00B4D8]'; }
+                else if (r.position <= 6) { borderColor = 'border-l-[#F4A100]'; posColor = 'text-[#F4A100]'; }
+                const gdColor = r.goal_difference > 0 ? 'text-[#34d399]' : r.goal_difference < 0 ? 'text-[#f87171]' : 'text-[#94a3b8]';
+                return `<tr class="hover:bg-[#334155] border-b border-[#1e293b] border-l-4 ${borderColor} transition">
+                    <td class="py-4 font-bold text-lg ${posColor}">${r.position}</td>
+                    <td class="py-4"><a href="team.html?id=${r.team_id}" class="text-white font-semibold hover:text-[#00B4D8] transition text-lg"><span class="mr-2">${App.flag(r.team_name)}</span>${r.team_name}</a></td>
+                    <td class="py-4 text-[#94a3b8]">${r.owner}</td>
+                    <td class="py-4 text-center text-[#cbd5e1]">${r.played}</td>
+                    <td class="py-4 text-center text-[#34d399] font-medium">${r.wins}</td>
+                    <td class="py-4 text-center text-[#94a3b8]">${r.draws}</td>
+                    <td class="py-4 text-center text-[#f87171]">${r.losses}</td>
+                    <td class="py-4 text-center text-[#cbd5e1]">${r.goals_for}</td>
+                    <td class="py-4 text-center text-[#cbd5e1]">${r.goals_against}</td>
+                    <td class="py-4 text-center font-medium ${gdColor}">${r.goal_difference}</td>
+                    <td class="py-4 text-center"><span class="bg-[#1e293b] text-white font-bold text-lg px-3 py-1 rounded">${r.points}</span></td>
+                </tr>`;
+            }).join('');
+
+            App.html('content', `
+                <h1 class="text-3xl font-bold text-white mb-8">Classificacao - Fase de Grupos</h1>
+                <div class="card p-6">
+                    <table class="w-full">
+                        <thead><tr class="text-[#94a3b8] text-sm border-b border-[#334155]">
+                            <th class="py-3 text-left w-10">#</th><th class="py-3 text-left">Selecao</th><th class="py-3 text-left">Tecnico</th>
+                            <th class="py-3 text-center">J</th><th class="py-3 text-center">V</th><th class="py-3 text-center">E</th>
+                            <th class="py-3 text-center">D</th><th class="py-3 text-center">GP</th><th class="py-3 text-center">GC</th>
+                            <th class="py-3 text-center">SG</th><th class="py-3 text-center font-bold text-white">Pts</th>
+                        </tr></thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                    <div class="mt-6 flex flex-wrap gap-6 text-sm text-[#94a3b8]">
+                        <span class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-[#00B4D8]"></span> Classificado para chave superior (1-4)</span>
+                        <span class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-[#F4A100]"></span> Repescagem / chave inferior (5-6)</span>
+                        <span class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-[#C8102E]"></span> Eliminado (7-8)</span>
+                    </div>
+                </div>
+            `);
+        })();
+    </script>
+</body>
+</html>

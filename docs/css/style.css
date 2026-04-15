@@ -1,0 +1,14 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+body { font-family: 'Inter', sans-serif; }
+.nav-link.active { border-bottom: 2px solid #00B4D8; color: #00B4D8; }
+.card { background: #1e293b; border-radius: 12px; border: 1px solid #334155; }
+.badge-gk { background: #f59e0b; color: #000; }
+.badge-def { background: #3b82f6; color: #fff; }
+.badge-mid { background: #10b981; color: #fff; }
+.badge-fwd { background: #ef4444; color: #fff; }
+.table-row:hover { background: #334155; }
+.wc-gradient { background: linear-gradient(135deg, #1B2A4A 0%, #7B2D8E 50%, #00B4D8 100%); }
+.wc-gradient-subtle { background: linear-gradient(135deg, #0f172a 0%, #1a1040 50%, #0f172a 100%); }
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #0f172a; }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }

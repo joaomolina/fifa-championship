@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chaveamento - Copa EA FC 26</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .bracket-match { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 12px 16px; min-width: 240px; }
+        .bracket-match.winner { border-color: #00B4D8; }
+        .bracket-team { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
+        .bracket-team.is-winner { color: #D4AF37; font-weight: 700; }
+        .bracket-team.is-loser { color: #64748b; }
+    </style>
+</head>
+<body class="bg-[#020617] text-[#e2e8f0] min-h-screen flex flex-col">
+    <div id="header"></div>
+    <main id="content" class="max-w-7xl mx-auto px-4 py-8 flex-1 w-full">
+        <p class="text-[#64748b] text-center py-20">Carregando...</p>
+    </main>
+    <div id="footer"></div>
+    <script src="js/app.js"></script>
+    <script>
+        App.init();
+        (async () => {
+            const [teams, matches] = await Promise.all([App.loadJSON('teams'), App.loadJSON('matches')]);
+            const teamMap = {};
+            teams.forEach(t => teamMap[t.id] = t);
+            const standings = App.computeStandings(matches, teams);
+            const posMap = {};
+            standings.forEach(r => posMap[r.team_id] = r.position);
+
+            function getWinner(m) {
+                if (!m || !m.played) return null;
+                if (m.home_score > m.away_score) return m.home_team_id;
+                if (m.away_score > m.home_score) return m.away_team_id;
+                const hp = posMap[m.home_team_id] || 99, ap = posMap[m.away_team_id] || 99;
+                return hp < ap ? m.home_team_id : m.away_team_id;
+            }
+
+            const phases = ['quarter_1v4','quarter_2v3','quarter_5v6','upper_semi','lower_r1','lower_r2','lower_final','grand_final'];
+            const phaseMap = {};
+            matches.forEach(m => { if (m.phase !== 'group') phaseMap[m.phase] = m; });
+
+            function matchCard(phase, label) {
+                const m = phaseMap[phase];
+                if (!m) {
+                    return `<div class="bracket-match">
+                        <p class="text-xs text-[#00B4D8] font-medium mb-2">${label}</p>
+                        <div class="bracket-team text-[#334155]"><span>A definir</span><span>-</span></div>
+                        <div class="border-t border-[#334155] my-1"></div>
+                        <div class="bracket-team text-[#334155]"><span>A definir</span><span>-</span></div>
+                    </div>`;
+                }
+                const w = getWinner(m);
+                const ht = teamMap[m.home_team_id], at = teamMap[m.away_team_id];
+                const hClass = w === m.home_team_id ? 'is-winner' : w ? 'is-loser' : '';
+                const aClass = w === m.away_team_id ? 'is-winner' : w ? 'is-loser' : '';
+                return `<div class="bracket-match ${w ? 'winner' : ''}">
+                    <p class="text-xs text-[#00B4D8] font-medium mb-2">${label}</p>
+                    <a href="match.html?id=${m.id}" class="block hover:opacity-80 transition">
+                        <div class="bracket-team ${hClass}"><span>${ht ? App.teamLabel(ht.name) : 'A definir'}</span><span class="font-bold">${m.played ? m.home_score : ''}</span></div>
+                        <div class="border-t border-[#334155] my-1"></div>
+                        <div class="bracket-team ${aClass}"><span>${at ? App.teamLabel(at.name) : 'A definir'}</span><span class="font-bold">${m.played ? m.away_score : ''}</span></div>
+                    </a>
+                </div>`;
+            }
+
+            App.html('content', `
+                <h1 class="text-3xl font-bold text-white mb-2">Chaveamento — Fase eliminatoria</h1>
+                <p class="text-[#94a3b8] mb-8">Criterio de desempate: posicao na fase de grupos</p>
+                <div class="overflow-x-auto pb-8"><div class="min-w-[1000px]">
+                    <div class="mb-3"><span class="text-sm font-bold text-[#00B4D8] bg-[#1B2A4A] px-3 py-1 rounded">CHAVE SUPERIOR</span></div>
+                    <div class="flex items-start gap-8 mb-10">
+                        <div class="flex flex-col gap-6">${matchCard('quarter_1v4','1o vs 4o')}${matchCard('quarter_2v3','2o vs 3o')}</div>
+                        <div class="flex flex-col justify-center h-full mt-16"><div class="w-8 border-t-2 border-[#334155]"></div></div>
+                        <div class="flex flex-col justify-center mt-8">${matchCard('upper_semi','Semifinal (chave superior)')}</div>
+                        <div class="flex flex-col justify-center mt-8"><div class="w-8 border-t-2 border-[#334155]"></div></div>
+                        <div class="flex flex-col justify-center mt-8">${matchCard('grand_final','GRANDE FINAL \u{1F3C6}')}</div>
+                    </div>
+                    <div class="mb-3"><span class="text-sm font-bold text-[#F4A100] bg-[#1B2A4A] px-3 py-1 rounded">CHAVE INFERIOR</span></div>
+                    <div class="flex items-start gap-8">
+                        <div class="flex flex-col gap-6">${matchCard('quarter_5v6','5o vs 6o')}</div>
+                        <div class="flex flex-col justify-center mt-6"><div class="w-8 border-t-2 border-[#334155]"></div></div>
+                        <div class="flex flex-col justify-center">${matchCard('lower_r1','Chave inferior — 1a rodada')}</div>
+                        <div class="flex flex-col justify-center"><div class="w-8 border-t-2 border-[#334155]"></div></div>
+                        <div class="flex flex-col justify-center">${matchCard('lower_r2','Chave inferior — 2a rodada')}</div>
+                        <div class="flex flex-col justify-center"><div class="w-8 border-t-2 border-[#334155]"></div></div>
+                        <div class="flex flex-col justify-center">${matchCard('lower_final','Final da chave inferior')}</div>
+                    </div>
+                </div></div>
+                <div class="card p-6 mt-4">
+                    <h3 class="text-sm font-semibold text-white mb-3">Como funciona</h3>
+                    <div class="text-sm text-[#94a3b8] space-y-1">
+                        <p>1. Quartas na chave superior: 1o vs 4o e 2o vs 3o; entrada na chave inferior: 5o vs 6o</p>
+                        <p>2. Semifinal (chave superior): vencedores das quartas da chave superior se enfrentam</p>
+                        <p>3. Chave inferior — 1a rodada: vencedor do 5o vs 6o enfrenta o perdedor do 1o vs 4o</p>
+                        <p>4. Chave inferior — 2a rodada: vencedor da 1a rodada inferior enfrenta o perdedor do 2o vs 3o</p>
+                        <p>5. Final da chave inferior: perdedor da semifinal superior enfrenta o vencedor da 2a rodada inferior</p>
+                        <p>6. Grande final: vencedor da semifinal superior vs vencedor da final inferior</p>
+                        <p class="text-[#475569] mt-2">Desempate: posicao na fase de grupos</p>
+                    </div>
+                </div>
+            `);
+        })();
+    </script>
+</body>
+</html>

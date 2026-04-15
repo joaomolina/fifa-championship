@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel - Copa EA FC 26</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-[#020617] text-[#e2e8f0] min-h-screen flex flex-col">
+    <div id="header"></div>
+    <main id="content" class="max-w-7xl mx-auto px-4 py-8 flex-1 w-full">
+        <p class="text-[#64748b] text-center py-20">Carregando...</p>
+    </main>
+    <div id="footer"></div>
+    <script src="js/app.js"></script>
+    <script>
+        App.init();
+        (async () => {
+            const [teams, matches, state] = await Promise.all([
+                App.loadJSON('teams'), App.loadJSON('matches'), App.loadJSON('tournament_state'),
+            ]);
+            const teamMap = {};
+            teams.forEach(t => teamMap[t.id] = t);
+            const standings = App.computeStandings(matches, teams);
+            const played = matches.filter(m => m.played);
+            const upcoming = matches.filter(m => !m.played).slice(0, 5);
+            const recent = played.slice(-5);
+            const scorers = App.getTopScorers(matches, 5);
+
+            const phase = state.phase || 'draft';
+            let phaseText = 'Sorteio de jogadores';
+            let phaseShort = 'Sorteio';
+            if (phase === 'group_stage') { phaseText = `Fase de Grupos — Rodada ${state.current_match_day || 1}`; phaseShort = 'Fase de Grupos'; }
+            else if (phase === 'bracket') { phaseText = 'Chaveamento (Eliminatorias)'; phaseShort = 'Chaveamento'; }
+            else if (phase === 'finished') { phaseText = 'Torneio finalizado!'; phaseShort = 'Fim'; }
+
+            const standingsRows = standings.map(r => {
+                const border = r.position <= 4 ? 'border-l-2 border-l-[#00B4D8]' : r.position <= 6 ? 'border-l-2 border-l-[#F4A100]' : '';
+                return `<tr class="hover:bg-[#334155] border-b border-[#1e293b] ${border}">
+                    <td class="py-2 text-[#94a3b8]">${r.position}</td>
+                    <td class="py-2 font-medium text-white">${App.teamLabel(r.team_name)} <span class="text-[#475569] ml-1 text-xs">${r.owner}</span></td>
+                    <td class="py-2 text-center">${r.played}</td>
+                    <td class="py-2 text-center text-[#34d399]">${r.wins}</td>
+                    <td class="py-2 text-center text-[#94a3b8]">${r.draws}</td>
+                    <td class="py-2 text-center text-[#f87171]">${r.losses}</td>
+                    <td class="py-2 text-center">${r.goal_difference}</td>
+                    <td class="py-2 text-center font-bold text-white">${r.points}</td>
+                </tr>`;
+            }).join('');
+
+            const scorersList = scorers.length ? scorers.map(s => `
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-white font-medium">${s.player_name}</p>
+                        <p class="text-[#475569] text-xs">${teamMap[s.team_id] ? App.teamLabel(teamMap[s.team_id].name) : ''}</p>
+                    </div>
+                    <span class="bg-[#1B2A4A] text-[#D4AF37] px-2 py-1 rounded text-sm font-bold">${s.goals}</span>
+                </div>
+            `).join('') : '<p class="text-[#475569] text-sm">Nenhum gol marcado ainda.</p>';
+
+            const upcomingList = upcoming.length ? upcoming.map(m => {
+                const h = teamMap[m.home_team_id], a = teamMap[m.away_team_id];
+                return `<div class="flex items-center justify-between text-sm bg-[#1e293b] rounded-lg p-3">
+                    <span class="text-white font-medium">${h ? App.teamLabel(h.name) : '?'}</span>
+                    <span class="text-[#475569] text-xs">vs</span>
+                    <span class="text-white font-medium">${a ? App.teamLabel(a.name) : '?'}</span>
+                </div>`;
+            }).join('') : '<p class="text-[#475569] text-sm">Nenhum jogo agendado.</p>';
+
+            const recentList = recent.length ? recent.map(m => {
+                const h = teamMap[m.home_team_id], a = teamMap[m.away_team_id];
+                return `<a href="match.html?id=${m.id}" class="flex items-center justify-between text-sm bg-[#1e293b] rounded-lg p-3 hover:bg-[#334155] transition">
+                    <span class="text-white font-medium">${h ? App.teamLabel(h.name) : '?'}</span>
+                    <span class="text-[#00B4D8] font-bold">${m.home_score} - ${m.away_score}</span>
+                    <span class="text-white font-medium">${a ? App.teamLabel(a.name) : '?'}</span>
+                </a>`;
+            }).join('') : '<p class="text-[#475569] text-sm">Nenhum resultado ainda.</p>';
+
+            App.html('content', `
+                <div class="mb-8">
+                    <h1 class="text-3xl font-bold text-white mb-2">Painel</h1>
+                    <p class="text-[#94a3b8]">Fase atual: ${phaseText}</p>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+                    <div class="card p-5"><p class="text-[#94a3b8] text-sm mb-1">Selecoes</p><p class="text-3xl font-bold text-white">${teams.length}</p></div>
+                    <div class="card p-5"><p class="text-[#94a3b8] text-sm mb-1">Jogos Realizados</p><p class="text-3xl font-bold text-white">${played.length}<span class="text-lg text-[#475569]">/${matches.length}</span></p></div>
+                    <div class="card p-5"><p class="text-[#94a3b8] text-sm mb-1">Fase</p><p class="text-xl font-bold text-[#00B4D8]">${phaseShort}</p></div>
+                    <div class="card p-5"><p class="text-[#94a3b8] text-sm mb-1">Artilheiro</p>${scorers.length ? `<p class="text-xl font-bold text-white">${scorers[0].player_name}</p><p class="text-sm text-[#D4AF37]">${scorers[0].goals} gols</p>` : '<p class="text-xl font-bold text-[#475569]">-</p>'}</div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2">
+                        <div class="card p-6">
+                            <div class="flex items-center justify-between mb-4">
+                                <h2 class="text-lg font-semibold text-white">Classificacao</h2>
+                                <a href="standings.html" class="text-[#00B4D8] text-sm hover:underline">Ver completa</a>
+                            </div>
+                            <table class="w-full text-sm">
+                                <thead><tr class="text-[#94a3b8] border-b border-[#334155]">
+                                    <th class="py-2 text-left w-8">#</th><th class="py-2 text-left">Selecao</th>
+                                    <th class="py-2 text-center">J</th><th class="py-2 text-center">V</th>
+                                    <th class="py-2 text-center">E</th><th class="py-2 text-center">D</th>
+                                    <th class="py-2 text-center">SG</th><th class="py-2 text-center font-bold">Pts</th>
+                                </tr></thead>
+                                <tbody>${standingsRows}</tbody>
+                            </table>
+                            <div class="mt-3 flex gap-4 text-xs text-[#475569]">
+                                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-[#00B4D8]"></span> Classificado direto (1-4)</span>
+                                <span class="flex items-center gap-1"><span class="w-2 h-2 rounded bg-[#F4A100]"></span> Repescagem (5-6)</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="space-y-6">
+                        <div class="card p-6"><h2 class="text-lg font-semibold text-white mb-4">Artilharia</h2><div class="space-y-3">${scorersList}</div></div>
+                        <div class="card p-6"><h2 class="text-lg font-semibold text-white mb-4">Proximos Jogos</h2><div class="space-y-3">${upcomingList}</div></div>
+                        <div class="card p-6"><h2 class="text-lg font-semibold text-white mb-4">Resultados Recentes</h2><div class="space-y-3">${recentList}</div></div>
+                    </div>
+                </div>
+            `);
+        })();
+    </script>
+</body>
+</html>

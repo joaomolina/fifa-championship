@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Jogos - Copa EA FC 26{% endblock %}
+
+{% block content %}
+<h1 class="text-3xl font-bold text-white mb-8">Jogos</h1>
+
+<!-- Group Stage -->
+{% if match_days %}
+<h2 class="text-xl font-semibold text-white mb-4">Fase de Grupos</h2>
+
+<div class="space-y-6 mb-10">
+    {% for day, day_matches in match_days|items|sort %}
+    <div class="card p-6">
+        <h3 class="text-sm font-semibold text-wc-teal mb-4">Rodada {{ day }}</h3>
+        <div class="space-y-2">
+            {% for m in day_matches %}
+            <a href="/matches/{{ m.id }}" class="flex items-center justify-between bg-dark-800 rounded-lg p-4 hover:bg-dark-700 transition">
+                <div class="flex-1 text-right">
+                    <span class="text-white font-medium">
+                        {{ team_flags.get(team_map[m.home_team_id].name, '') if m.home_team_id in team_map else '' }}
+                        {{ team_map[m.home_team_id].name if m.home_team_id in team_map else '?' }}
+                    </span>
+                    <span class="text-dark-500 text-xs ml-1">{{ team_map[m.home_team_id].owner if m.home_team_id in team_map else '' }}</span>
+                </div>
+                <div class="w-24 text-center">
+                    {% if m.played %}
+                    <span class="text-wc-teal font-bold text-lg">{{ m.home_score }} - {{ m.away_score }}</span>
+                    {% else %}
+                    <span class="text-dark-500 text-sm">vs</span>
+                    {% endif %}
+                </div>
+                <div class="flex-1">
+                    <span class="text-dark-500 text-xs mr-1">{{ team_map[m.away_team_id].owner if m.away_team_id in team_map else '' }}</span>
+                    <span class="text-white font-medium">
+                        {{ team_map[m.away_team_id].name if m.away_team_id in team_map else '?' }}
+                        {{ team_flags.get(team_map[m.away_team_id].name, '') if m.away_team_id in team_map else '' }}
+                    </span>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Bracket Matches -->
+{% if bracket_matches %}
+<h2 class="text-xl font-semibold text-white mb-4">Fase Eliminatoria</h2>
+<div class="card p-6">
+    <div class="space-y-2">
+        {% for m in bracket_matches %}
+        <a href="/matches/{{ m.id }}" class="flex items-center justify-between bg-dark-800 rounded-lg p-4 hover:bg-dark-700 transition">
+            <span class="text-xs text-wc-teal font-medium w-40">{{ phase_labels.get(m.phase, m.phase) }}</span>
+            <div class="flex-1 text-right">
+                <span class="text-white font-medium">
+                    {{ team_flags.get(team_map[m.home_team_id].name, '') if m.home_team_id in team_map else '' }}
+                    {{ team_map[m.home_team_id].name if m.home_team_id in team_map else '?' }}
+                </span>
+            </div>
+            <div class="w-24 text-center">
+                {% if m.played %}
+                <span class="text-wc-teal font-bold text-lg">{{ m.home_score }} - {{ m.away_score }}</span>
+                {% else %}
+                <span class="text-dark-500 text-sm">vs</span>
+                {% endif %}
+            </div>
+            <div class="flex-1">
+                <span class="text-white font-medium">
+                    {{ team_map[m.away_team_id].name if m.away_team_id in team_map else '?' }}
+                    {{ team_flags.get(team_map[m.away_team_id].name, '') if m.away_team_id in team_map else '' }}
+                </span>
+            </div>
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Transferencias - Copa EA FC 26{% endblock %}
+
+{% block content %}
+<h1 class="text-3xl font-bold text-white mb-8">Transferencias</h1>
+
+<!-- Transfer Windows -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+    {% for w in windows %}
+    <div class="card p-5 {% if w.is_open %}border-wc-teal{% elif w.is_completed %}border-dark-600{% endif %}">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="text-white font-semibold">Janela {{ w.number }}</h3>
+            {% if w.is_open %}
+            <span class="text-xs bg-wc-navy text-wc-teal px-2 py-1 rounded font-bold">ABERTA</span>
+            {% elif w.is_completed %}
+            <span class="text-xs bg-dark-700 text-dark-400 px-2 py-1 rounded">Encerrada</span>
+            {% else %}
+            <span class="text-xs bg-dark-800 text-dark-500 px-2 py-1 rounded">Pendente</span>
+            {% endif %}
+        </div>
+        <p class="text-dark-400 text-sm">
+            {% if w.phase == 'group' %}
+                {% if w.after_match_day == 0 %}Antes do torneio{% else %}Apos rodada {{ w.after_match_day }}{% endif %}
+            {% else %}
+                Antes da fase eliminatoria
+            {% endif %}
+        </p>
+        <p class="text-dark-500 text-xs mt-1">Ate {{ w.max_trades }} trocas</p>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Transfer Rules -->
+<div class="card p-6 mb-8">
+    <h2 class="text-lg font-semibold text-white mb-3">Regras de Transferencia</h2>
+    <ul class="text-dark-400 text-sm space-y-2">
+        <li>Cada jogador so pode ser trocado por outro da mesma posicao (GK por GK, DEF por DEF, etc.)</li>
+        <li>Maximo de 3 trocas por janela de transferencia</li>
+        <li>As trocas devem ser acordadas entre os dois tecnicos das selecoes</li>
+        <li>A ultima janela acontece antes da fase eliminatoria (chaveamento)</li>
+    </ul>
+</div>
+
+<!-- Transfer History -->
+<div class="card p-6">
+    <h2 class="text-lg font-semibold text-white mb-4">Historico de Transferencias</h2>
+
+    {% if transfers %}
+    <div class="space-y-4">
+        {% for t in transfers %}
+        {% set pa = player_map.get(t.player_a_id) %}
+        {% set pb = player_map.get(t.player_b_id) %}
+        {% set ta = team_map.get(t.team_a_id) %}
+        {% set tb = team_map.get(t.team_b_id) %}
+        <div class="bg-dark-800 rounded-lg p-4">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs text-wc-teal font-medium">Janela {{ t.window }}</span>
+                {% if t.timestamp %}
+                <span class="text-xs text-dark-500">{{ t.timestamp }}</span>
+                {% endif %}
+            </div>
+            <div class="flex items-center justify-center gap-4">
+                <div class="text-center flex-1">
+                    <p class="text-white font-medium">{{ team_flags.get(ta.name, '') if ta else '' }} {{ ta.name if ta else '?' }}</p>
+                    <p class="text-red-400 text-sm mt-1">- {{ pa.name if pa else '?' }} ({{ pa.overall if pa else '?' }})</p>
+                    <p class="text-pitch-400 text-sm">+ {{ pb.name if pb else '?' }} ({{ pb.overall if pb else '?' }})</p>
+                </div>
+                <div class="text-dark-500 text-2xl">&#8644;</div>
+                <div class="text-center flex-1">
+                    <p class="text-white font-medium">{{ team_flags.get(tb.name, '') if tb else '' }} {{ tb.name if tb else '?' }}</p>
+                    <p class="text-red-400 text-sm mt-1">- {{ pb.name if pb else '?' }} ({{ pb.overall if pb else '?' }})</p>
+                    <p class="text-pitch-400 text-sm">+ {{ pa.name if pa else '?' }} ({{ pa.overall if pa else '?' }})</p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-dark-500">Nenhuma transferencia realizada ainda.</p>
+    {% endif %}
+</div>
+{% endblock %}

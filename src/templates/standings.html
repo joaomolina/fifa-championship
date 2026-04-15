@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Classificacao - Copa EA FC 26{% endblock %}
+
+{% block content %}
+<h1 class="text-3xl font-bold text-white mb-8">Classificacao - Fase de Grupos</h1>
+
+<div class="card p-6">
+    <table class="w-full">
+        <thead>
+            <tr class="text-dark-400 text-sm border-b border-dark-700">
+                <th class="py-3 text-left w-10">#</th>
+                <th class="py-3 text-left">Selecao</th>
+                <th class="py-3 text-left">Tecnico</th>
+                <th class="py-3 text-center">J</th>
+                <th class="py-3 text-center">V</th>
+                <th class="py-3 text-center">E</th>
+                <th class="py-3 text-center">D</th>
+                <th class="py-3 text-center">GP</th>
+                <th class="py-3 text-center">GC</th>
+                <th class="py-3 text-center">SG</th>
+                <th class="py-3 text-center font-bold text-white">Pts</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in standings %}
+            <tr class="table-row border-b border-dark-800 transition
+                {% if row.position <= 4 %}border-l-4 border-l-wc-teal
+                {% elif row.position <= 6 %}border-l-4 border-l-wc-orange
+                {% else %}border-l-4 border-l-wc-red{% endif %}">
+                <td class="py-4 font-bold text-lg
+                    {% if row.position == 1 %}text-wc-gold
+                    {% elif row.position <= 4 %}text-wc-teal
+                    {% elif row.position <= 6 %}text-wc-orange
+                    {% else %}text-red-400{% endif %}">
+                    {{ row.position }}
+                </td>
+                <td class="py-4">
+                    <a href="/teams/{{ row.team_id }}" class="text-white font-semibold hover:text-wc-teal transition text-lg">
+                        <span class="mr-2">{{ team_flags.get(row.team_name, '') }}</span>{{ row.team_name }}
+                    </a>
+                </td>
+                <td class="py-4 text-dark-400">{{ row.owner }}</td>
+                <td class="py-4 text-center text-dark-300">{{ row.played }}</td>
+                <td class="py-4 text-center text-pitch-400 font-medium">{{ row.wins }}</td>
+                <td class="py-4 text-center text-dark-400">{{ row.draws }}</td>
+                <td class="py-4 text-center text-red-400">{{ row.losses }}</td>
+                <td class="py-4 text-center text-dark-300">{{ row.goals_for }}</td>
+                <td class="py-4 text-center text-dark-300">{{ row.goals_against }}</td>
+                <td class="py-4 text-center font-medium
+                    {% if row.goal_difference > 0 %}text-pitch-400
+                    {% elif row.goal_difference < 0 %}text-red-400
+                    {% else %}text-dark-400{% endif %}">
+                    {{ row.goal_difference }}
+                </td>
+                <td class="py-4 text-center">
+                    <span class="bg-dark-800 text-white font-bold text-lg px-3 py-1 rounded">{{ row.points }}</span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="mt-6 flex flex-wrap gap-6 text-sm text-dark-400">
+        <span class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-wc-teal"></span> Classificado para chave superior (1-4)</span>
+        <span class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-wc-orange"></span> Repescagem / chave inferior (5-6)</span>
+        <span class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-wc-red"></span> Eliminado (7-8)</span>
+    </div>
+</div>
+{% endblock %}

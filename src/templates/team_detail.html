@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}{{ team_flags.get(team.name, '') }} {{ team.name }} - Copa EA FC 26{% endblock %}
+
+{% block content %}
+<div class="flex items-center gap-4 mb-8">
+    <a href="/teams" class="text-dark-400 hover:text-white transition">&larr; Selecoes</a>
+</div>
+
+<div class="flex items-center justify-between mb-8">
+    <div>
+        <h1 class="text-3xl font-bold text-white">
+            <span class="mr-2 text-4xl">{{ team_flags.get(team.name, '') }}</span>{{ team.name }}
+        </h1>
+        <p class="text-dark-400 text-lg mt-1">Tecnico: {{ team.owner }}</p>
+    </div>
+    <div class="text-right">
+        <p class="text-4xl font-bold text-white">{{ "%.1f"|format(avg_overall) }}</p>
+        <p class="text-dark-400">Overall medio</p>
+    </div>
+</div>
+
+<!-- Squad by Position -->
+{% for pg_key, pg_players in by_group.items() %}
+<div class="card p-6 mb-6">
+    <div class="flex items-center gap-3 mb-4">
+        <span class="px-3 py-1 rounded text-sm font-bold
+            {% if pg_key == 'GK' %}badge-gk
+            {% elif pg_key == 'DEF' %}badge-def
+            {% elif pg_key == 'MID' %}badge-mid
+            {% else %}badge-fwd{% endif %}">
+            {% if pg_key == 'GK' %}Goleiros
+            {% elif pg_key == 'DEF' %}Defensores
+            {% elif pg_key == 'MID' %}Meio-campistas
+            {% else %}Atacantes{% endif %}
+        </span>
+        <span class="text-dark-400 text-sm">{{ pg_players|length }} jogadores</span>
+    </div>
+    <table class="w-full text-sm">
+        <thead>
+            <tr class="text-dark-400 border-b border-dark-700">
+                <th class="py-2 text-left">Nome</th>
+                <th class="py-2 text-center w-16">Pos</th>
+                <th class="py-2 text-center w-16">OVR</th>
+                <th class="py-2 text-center w-12">PAC</th>
+                <th class="py-2 text-center w-12">SHO</th>
+                <th class="py-2 text-center w-12">PAS</th>
+                <th class="py-2 text-center w-12">DRI</th>
+                <th class="py-2 text-center w-12">DEF</th>
+                <th class="py-2 text-center w-12">PHY</th>
+                <th class="py-2 text-center w-16">Gols</th>
+                <th class="py-2 text-center w-16">Assis</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in pg_players %}
+            <tr class="table-row border-b border-dark-800">
+                <td class="py-2">
+                    <span class="text-white font-medium">{{ p.name }}</span>
+                    {% if p.nationality %}
+                    <span class="text-dark-500 text-xs ml-1">{{ p.nationality }}</span>
+                    {% endif %}
+                </td>
+                <td class="py-2 text-center text-dark-300">{{ p.position }}</td>
+                <td class="py-2 text-center">
+                    <span class="font-bold
+                        {% if p.overall >= 85 %}text-wc-gold
+                        {% elif p.overall >= 75 %}text-wc-teal
+                        {% else %}text-dark-300{% endif %}">
+                        {{ p.overall }}
+                    </span>
+                </td>
+                <td class="py-2 text-center text-dark-400">{{ p.pace }}</td>
+                <td class="py-2 text-center text-dark-400">{{ p.shooting }}</td>
+                <td class="py-2 text-center text-dark-400">{{ p.passing }}</td>
+                <td class="py-2 text-center text-dark-400">{{ p.dribbling }}</td>
+                <td class="py-2 text-center text-dark-400">{{ p.defending }}</td>
+                <td class="py-2 text-center text-dark-400">{{ p.physical }}</td>
+                <td class="py-2 text-center text-wc-gold font-medium">{{ player_stats.get(p.id, {}).get('goals', 0) or '-' }}</td>
+                <td class="py-2 text-center text-wc-teal font-medium">{{ player_stats.get(p.id, {}).get('assists', 0) or '-' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endfor %}
+
+<!-- Team Matches -->
+<div class="card p-6">
+    <h2 class="text-lg font-semibold text-white mb-4">Jogos da Selecao</h2>
+    {% if team_matches %}
+    <div class="space-y-2">
+        {% for m in team_matches %}
+        <a href="/matches/{{ m.id }}" class="flex items-center justify-between bg-dark-800 rounded-lg p-3 hover:bg-dark-700 transition">
+            <span class="text-white font-medium {% if m.home_team_id == team.id %}text-wc-teal{% endif %}">
+                {{ team_flags.get(team_map[m.home_team_id].name, '') if m.home_team_id in team_map else '' }}
+                {{ team_map[m.home_team_id].name if m.home_team_id in team_map else '?' }}
+            </span>
+            {% if m.played %}
+            <span class="text-wc-teal font-bold">{{ m.home_score }} - {{ m.away_score }}</span>
+            {% else %}
+            <span class="text-dark-500 text-xs">vs</span>
+            {% endif %}
+            <span class="text-white font-medium {% if m.away_team_id == team.id %}text-wc-teal{% endif %}">
+                {{ team_flags.get(team_map[m.away_team_id].name, '') if m.away_team_id in team_map else '' }}
+                {{ team_map[m.away_team_id].name if m.away_team_id in team_map else '?' }}
+            </span>
+        </a>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-dark-500">Nenhum jogo agendado.</p>
+    {% endif %}
+</div>
+{% endblock %}

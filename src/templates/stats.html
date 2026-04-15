@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block title %}Estatisticas - Copa EA FC 26{% endblock %}
+
+{% block content %}
+<h1 class="text-3xl font-bold text-white mb-8">Estatisticas</h1>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+    <div class="card p-6">
+        <h2 class="text-lg font-semibold text-white mb-4">Artilharia</h2>
+        {% if top_scorers %}
+        <canvas id="scorersChart" height="300"></canvas>
+        {% else %}
+        <p class="text-dark-500">Nenhum gol marcado ainda.</p>
+        {% endif %}
+    </div>
+
+    <div class="card p-6">
+        <h2 class="text-lg font-semibold text-white mb-4">Assistencias</h2>
+        {% if top_assisters %}
+        <canvas id="assistsChart" height="300"></canvas>
+        {% else %}
+        <p class="text-dark-500">Nenhuma assistencia ainda.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card p-6 mb-6">
+    <h2 class="text-lg font-semibold text-white mb-4">Pontuacao das Selecoes</h2>
+    {% if standings %}
+    <canvas id="pointsChart" height="200"></canvas>
+    {% else %}
+    <p class="text-dark-500">Sem dados ainda.</p>
+    {% endif %}
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div class="card p-6">
+        <h2 class="text-lg font-semibold text-white mb-4">Gols Marcados vs Sofridos</h2>
+        {% if standings %}
+        <canvas id="goalsChart" height="250"></canvas>
+        {% endif %}
+    </div>
+
+    <div class="card p-6">
+        <h2 class="text-lg font-semibold text-white mb-4">Ranking de Artilheiros</h2>
+        {% if top_scorers %}
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="text-dark-400 border-b border-dark-700">
+                    <th class="py-2 text-left w-8">#</th>
+                    <th class="py-2 text-left">Jogador</th>
+                    <th class="py-2 text-left">Selecao</th>
+                    <th class="py-2 text-center">Gols</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in top_scorers %}
+                <tr class="table-row border-b border-dark-800">
+                    <td class="py-2 text-dark-400">{{ loop.index }}</td>
+                    <td class="py-2 text-white font-medium">{{ s.player_name }}</td>
+                    <td class="py-2 text-dark-400">
+                        {% if s.team_id in team_map %}
+                        {{ team_flags.get(team_map[s.team_id].name, '') }} {{ team_map[s.team_id].name }}
+                        {% endif %}
+                    </td>
+                    <td class="py-2 text-center text-wc-gold font-bold">{{ s.goals }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const TEAM_CHART_COLORS = {
+    {% for name, color in team_colors.items() %}
+    '{{ name }}': '{{ color }}',
+    {% endfor %}
+};
+
+const CHART_COLORS = [
+    '#00B4D8', '#7B2D8E', '#E6007E', '#F4A100',
+    '#C8102E', '#002395', '#006847', '#002868'
+];
+
+Chart.defaults.color = '#94a3b8';
+
+{% if top_scorers %}
+new Chart(document.getElementById('scorersChart'), {
+    type: 'bar',
+    data: {
+        labels: [{% for s in top_scorers[:10] %}'{{ s.player_name }}'{% if not loop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+            label: 'Gols',
+            data: [{% for s in top_scorers[:10] %}{{ s.goals }}{% if not loop.last %},{% endif %}{% endfor %}],
+            backgroundColor: '#D4AF37',
+            borderRadius: 4,
+        }]
+    },
+    options: {
+        indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: {
+            x: { grid: { color: '#1e293b' }, ticks: { stepSize: 1 } },
+            y: { grid: { display: false } },
+        }
+    }
+});
+{% endif %}
+
+{% if top_assisters %}
+new Chart(document.getElementById('assistsChart'), {
+    type: 'bar',
+    data: {
+        labels: [{% for a in top_assisters[:10] %}'{{ a.player_name }}'{% if not loop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+            label: 'Assistencias',
+            data: [{% for a in top_assisters[:10] %}{{ a.assists }}{% if not loop.last %},{% endif %}{% endfor %}],
+            backgroundColor: '#00B4D8',
+            borderRadius: 4,
+        }]
+    },
+    options: {
+        indexAxis: 'y',
+        plugins: { legend: { display: false } },
+        scales: {
+            x: { grid: { color: '#1e293b' }, ticks: { stepSize: 1 } },
+            y: { grid: { display: false } },
+        }
+    }
+});
+{% endif %}
+
+{% if standings %}
+new Chart(document.getElementById('pointsChart'), {
+    type: 'bar',
+    data: {
+        labels: [{% for s in standings %}'{{ s.team_name }}'{% if not loop.last %},{% endif %}{% endfor %}],
+        datasets: [{
+            label: 'Pontos',
+            data: [{% for s in standings %}{{ s.points }}{% if not loop.last %},{% endif %}{% endfor %}],
+            backgroundColor: [{% for s in standings %}TEAM_CHART_COLORS['{{ s.team_name }}'] || CHART_COLORS[{{ loop.index0 }}]{% if not loop.last %},{% endif %}{% endfor %}],
+            borderRadius: 4,
+        }]
+    },
+    options: {
+        plugins: { legend: { display: false } },
+        scales: {
+            y: { grid: { color: '#1e293b' }, ticks: { stepSize: 1 } },
+            x: { grid: { display: false } },
+        }
+    }
+});
+
+new Chart(document.getElementById('goalsChart'), {
+    type: 'bar',
+    data: {
+        labels: [{% for s in standings %}'{{ s.team_name }}'{% if not loop.last %},{% endif %}{% endfor %}],
+        datasets: [
+            {
+                label: 'Gols Marcados',
+                data: [{% for s in standings %}{{ s.goals_for }}{% if not loop.last %},{% endif %}{% endfor %}],
+                backgroundColor: '#D4AF37',
+                borderRadius: 4,
+            },
+            {
+                label: 'Gols Sofridos',
+                data: [{% for s in standings %}{{ s.goals_against }}{% if not loop.last %},{% endif %}{% endfor %}],
+                backgroundColor: '#C8102E',
+                borderRadius: 4,
+            }
+        ]
+    },
+    options: {
+        plugins: { legend: { position: 'top', labels: { boxWidth: 12 } } },
+        scales: {
+            y: { grid: { color: '#1e293b' }, ticks: { stepSize: 1 } },
+            x: { grid: { display: false } },
+        }
+    }
+});
+{% endif %}
+</script>
+{% endblock %}

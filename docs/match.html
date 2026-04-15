@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo - Copa EA FC 26</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-[#020617] text-[#e2e8f0] min-h-screen flex flex-col">
+    <div id="header"></div>
+    <main id="content" class="max-w-7xl mx-auto px-4 py-8 flex-1 w-full">
+        <p class="text-[#64748b] text-center py-20">Carregando...</p>
+    </main>
+    <div id="footer"></div>
+    <script src="js/app.js"></script>
+    <script>
+        App.init();
+        (async () => {
+            const matchId = parseInt(App.getParam('id'));
+            if (!matchId) { App.html('content', '<p class="text-[#f87171]">Jogo nao encontrado.</p>'); return; }
+
+            const [teams, matches] = await Promise.all([App.loadJSON('teams'), App.loadJSON('matches')]);
+            const teamMap = {};
+            teams.forEach(t => teamMap[t.id] = t);
+            const match = matches.find(m => m.id === matchId);
+            if (!match) { App.html('content', '<p class="text-[#f87171]">Jogo nao encontrado.</p>'); return; }
+
+            const home = teamMap[match.home_team_id], away = teamMap[match.away_team_id];
+            document.title = `${home ? home.name : '?'} vs ${away ? away.name : '?'} - Copa EA FC 26`;
+
+            const evtIcons = { goal: '\u26BD', assist: '\u{1F45F}', yellow_card: '\u{1F7E8}', red_card: '\u{1F7E5}', own_goal: '\u{1F534}' };
+            const evtLabels = { goal: 'Gol', assist: 'Assistencia', yellow_card: 'Cartao amarelo', red_card: 'Cartao vermelho', own_goal: 'Gol contra' };
+
+            let eventsHTML = '';
+            if (match.played && match.events && match.events.length) {
+                const evts = match.events.map(evt => {
+                    const isHome = evt.team_id === match.home_team_id;
+                    const colorClass = evt.type === 'goal' ? 'text-[#D4AF37]' : evt.type === 'assist' ? 'text-[#00B4D8]' : evt.type === 'yellow_card' ? 'text-[#facc15]' : 'text-[#f87171]';
+                    const minute = evt.minute ? `<span class="text-sm ${colorClass} font-bold w-8">${evt.minute}'</span>` : '';
+                    const icon = evtIcons[evt.type] || '';
+                    const label = evtLabels[evt.type] || evt.type;
+                    if (isHome) {
+                        return `<div class="flex items-center gap-3 justify-start">${minute}<span class="text-lg">${icon}</span><span class="text-white">${evt.player_name}</span><span class="text-[#475569] text-xs">${label}</span></div>`;
+                    }
+                    return `<div class="flex items-center gap-3 justify-end"><span class="text-[#475569] text-xs">${label}</span><span class="text-white">${evt.player_name}</span><span class="text-lg">${icon}</span>${minute}</div>`;
+                }).join('');
+                eventsHTML = `<div class="card p-6 mb-6"><h2 class="text-lg font-semibold text-white mb-4">Eventos</h2><div class="space-y-3">${evts}</div></div>`;
+            }
+
+            let statsHTML = '';
+            const st = match.stats || {};
+            if (match.played && st.home_possession != null) {
+                function bar(label, hv, av, pct = false) {
+                    const total = (hv + av) || 1;
+                    const hp = (hv / total * 100).toFixed(0);
+                    const suffix = pct ? '%' : '';
+                    return `<div>
+                        <div class="flex justify-between text-sm mb-1"><span class="text-white font-medium">${hv}${suffix}</span><span class="text-[#94a3b8]">${label}</span><span class="text-white font-medium">${av}${suffix}</span></div>
+                        <div class="flex h-2 rounded-full overflow-hidden bg-[#334155]"><div class="bg-[#00B4D8] rounded-l-full" style="width:${hp}%"></div><div class="bg-[#7B2D8E] rounded-r-full" style="width:${100 - hp}%"></div></div>
+                    </div>`;
+                }
+                const bars = [
+                    bar('Posse de bola', st.home_possession || 0, st.away_possession || 0, true),
+                    bar('Finalizacoes', st.home_shots || 0, st.away_shots || 0),
+                    bar('Chutes a gol', st.home_shots_on_target || 0, st.away_shots_on_target || 0),
+                    bar('Escanteios', st.home_corners || 0, st.away_corners || 0),
+                    bar('Faltas', st.home_fouls || 0, st.away_fouls || 0),
+                ].join('');
+                statsHTML = `<div class="card p-6"><h2 class="text-lg font-semibold text-white mb-4">Estatisticas</h2><div class="space-y-4">${bars}</div></div>`;
+            }
+
+            const scoreDisplay = match.played
+                ? `<p class="text-5xl font-black text-white">${match.home_score} <span class="text-[#334155] mx-2">-</span> ${match.away_score}</p>`
+                : '<p class="text-2xl text-[#475569]">vs</p><p class="text-sm text-[#334155] mt-1">Ainda nao jogado</p>';
+
+            App.html('content', `
+                <div class="flex items-center gap-4 mb-8">
+                    <a href="matches.html" class="text-[#94a3b8] hover:text-white transition">&larr; Jogos</a>
+                    <span class="text-[#334155]">|</span>
+                    <span class="text-[#00B4D8] text-sm font-medium">${App.phaseLabel(match.phase)}</span>
+                </div>
+                <div class="card p-8 mb-6">
+                    <div class="flex items-center justify-center gap-8">
+                        <div class="text-center flex-1">
+                            <p class="text-4xl mb-2">${home ? App.flag(home.name) : ''}</p>
+                            <a href="team.html?id=${match.home_team_id}" class="text-2xl font-bold text-white hover:text-[#00B4D8] transition">${home ? home.name : '?'}</a>
+                            <p class="text-[#94a3b8] text-sm">${home ? home.owner : ''}</p>
+                        </div>
+                        <div class="text-center">${scoreDisplay}</div>
+                        <div class="text-center flex-1">
+                            <p class="text-4xl mb-2">${away ? App.flag(away.name) : ''}</p>
+                            <a href="team.html?id=${match.away_team_id}" class="text-2xl font-bold text-white hover:text-[#00B4D8] transition">${away ? away.name : '?'}</a>
+                            <p class="text-[#94a3b8] text-sm">${away ? away.owner : ''}</p>
+                        </div>
+                    </div>
+                </div>
+                ${eventsHTML}${statsHTML}
+            `);
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Selecao - Copa EA FC 26</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-[#020617] text-[#e2e8f0] min-h-screen flex flex-col">
+    <div id="header"></div>
+    <main id="content" class="max-w-7xl mx-auto px-4 py-8 flex-1 w-full">
+        <p class="text-[#64748b] text-center py-20">Carregando...</p>
+    </main>
+    <div id="footer"></div>
+    <script src="js/app.js"></script>
+    <script>
+        App.init();
+        (async () => {
+            const teamId = parseInt(App.getParam('id'));
+            if (!teamId) { App.html('content', '<p class="text-[#f87171]">Selecao nao encontrada.</p>'); return; }
+
+            const [teams, players, matches] = await Promise.all([
+                App.loadJSON('teams'), App.loadJSON('players'), App.loadJSON('matches'),
+            ]);
+            const team = teams.find(t => t.id === teamId);
+            if (!team) { App.html('content', '<p class="text-[#f87171]">Selecao nao encontrada.</p>'); return; }
+
+            document.title = `${App.flag(team.name)} ${team.name} - Copa EA FC 26`;
+            const playerMap = {};
+            players.forEach(p => playerMap[p.id] = p);
+            const teamMap = {};
+            teams.forEach(t => teamMap[t.id] = t);
+            const tp = team.players.map(id => playerMap[id]).filter(Boolean);
+            const avg = tp.length ? (tp.reduce((s, p) => s + p.overall, 0) / tp.length).toFixed(1) : '0.0';
+
+            const pStats = {};
+            tp.forEach(p => pStats[p.id] = { goals: 0, assists: 0 });
+            matches.filter(m => m.played).forEach(m => {
+                (m.events || []).forEach(evt => {
+                    if (evt.team_id === teamId && pStats[evt.player_id] !== undefined) {
+                        if (evt.type === 'goal') pStats[evt.player_id].goals++;
+                        else if (evt.type === 'assist') pStats[evt.player_id].assists++;
+                    }
+                });
+            });
+
+            const groups = [
+                ['GK', 'Goleiros', 'badge-gk'], ['DEF', 'Defensores', 'badge-def'],
+                ['MID', 'Meio-campistas', 'badge-mid'], ['FWD', 'Atacantes', 'badge-fwd'],
+            ];
+
+            const rosterSections = groups.map(([g, label, badge]) => {
+                const gp = tp.filter(p => p.position_group === g).sort((a, b) => b.overall - a.overall);
+                const rows = gp.map(p => {
+                    const ovrColor = p.overall >= 85 ? 'text-[#D4AF37]' : p.overall >= 75 ? 'text-[#00B4D8]' : 'text-[#cbd5e1]';
+                    const gs = pStats[p.id] || { goals: 0, assists: 0 };
+                    return `<tr class="hover:bg-[#334155] border-b border-[#1e293b]">
+                        <td class="py-2"><span class="text-white font-medium">${p.name}</span> <span class="text-[#475569] text-xs ml-1">${p.nationality || ''}</span></td>
+                        <td class="py-2 text-center text-[#cbd5e1]">${p.position}</td>
+                        <td class="py-2 text-center"><span class="font-bold ${ovrColor}">${p.overall}</span></td>
+                        <td class="py-2 text-center text-[#94a3b8]">${p.pace}</td>
+                        <td class="py-2 text-center text-[#94a3b8]">${p.shooting}</td>
+                        <td class="py-2 text-center text-[#94a3b8]">${p.passing}</td>
+                        <td class="py-2 text-center text-[#94a3b8]">${p.dribbling}</td>
+                        <td class="py-2 text-center text-[#94a3b8]">${p.defending}</td>
+                        <td class="py-2 text-center text-[#94a3b8]">${p.physical}</td>
+                        <td class="py-2 text-center text-[#D4AF37] font-medium">${gs.goals || '-'}</td>
+                        <td class="py-2 text-center text-[#00B4D8] font-medium">${gs.assists || '-'}</td>
+                    </tr>`;
+                }).join('');
+                return `<div class="card p-6 mb-6">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="px-3 py-1 rounded text-sm font-bold ${badge}">${label}</span>
+                        <span class="text-[#94a3b8] text-sm">${gp.length} jogadores</span>
+                    </div>
+                    <table class="w-full text-sm"><thead><tr class="text-[#94a3b8] border-b border-[#334155]">
+                        <th class="py-2 text-left">Nome</th><th class="py-2 text-center w-16">Pos</th><th class="py-2 text-center w-16">OVR</th>
+                        <th class="py-2 text-center w-12">PAC</th><th class="py-2 text-center w-12">SHO</th><th class="py-2 text-center w-12">PAS</th>
+                        <th class="py-2 text-center w-12">DRI</th><th class="py-2 text-center w-12">DEF</th><th class="py-2 text-center w-12">PHY</th>
+                        <th class="py-2 text-center w-16">Gols</th><th class="py-2 text-center w-16">Assis</th>
+                    </tr></thead><tbody>${rows}</tbody></table>
+                </div>`;
+            }).join('');
+
+            const teamMatches = matches.filter(m => m.home_team_id === teamId || m.away_team_id === teamId);
+            const matchList = teamMatches.map(m => {
+                const h = teamMap[m.home_team_id], a = teamMap[m.away_team_id];
+                const hClass = m.home_team_id === teamId ? 'text-[#00B4D8]' : 'text-white';
+                const aClass = m.away_team_id === teamId ? 'text-[#00B4D8]' : 'text-white';
+                const score = m.played ? `<span class="text-[#00B4D8] font-bold">${m.home_score} - ${m.away_score}</span>` : '<span class="text-[#475569] text-xs">vs</span>';
+                return `<a href="match.html?id=${m.id}" class="flex items-center justify-between bg-[#1e293b] rounded-lg p-3 hover:bg-[#334155] transition">
+                    <span class="font-medium ${hClass}">${h ? App.teamLabel(h.name) : '?'}</span>${score}
+                    <span class="font-medium ${aClass}">${a ? App.teamLabel(a.name) : '?'}</span>
+                </a>`;
+            }).join('');
+
+            App.html('content', `
+                <div class="flex items-center gap-4 mb-8"><a href="teams.html" class="text-[#94a3b8] hover:text-white transition">&larr; Selecoes</a></div>
+                <div class="flex items-center justify-between mb-8">
+                    <div>
+                        <h1 class="text-3xl font-bold text-white"><span class="mr-2 text-4xl">${App.flag(team.name)}</span>${team.name}</h1>
+                        <p class="text-[#94a3b8] text-lg mt-1">Tecnico: ${team.owner}</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-4xl font-bold text-white">${avg}</p>
+                        <p class="text-[#94a3b8]">Overall medio</p>
+                    </div>
+                </div>
+                ${rosterSections}
+                <div class="card p-6">
+                    <h2 class="text-lg font-semibold text-white mb-4">Jogos da Selecao</h2>
+                    <div class="space-y-2">${matchList || '<p class="text-[#475569]">Nenhum jogo agendado.</p>'}</div>
+                </div>
+            `);
+        })();
+    </script>
+</body>
+</html>

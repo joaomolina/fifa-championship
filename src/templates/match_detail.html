@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Jogo #{{ match.id }} - Copa EA FC 26{% endblock %}
+
+{% block content %}
+<div class="flex items-center gap-4 mb-8">
+    <a href="/matches" class="text-dark-400 hover:text-white transition">&larr; Jogos</a>
+    <span class="text-dark-600">|</span>
+    <span class="text-wc-teal text-sm font-medium">{{ phase_labels.get(match.phase, match.phase) }}</span>
+</div>
+
+{% set home = team_map.get(match.home_team_id) %}
+{% set away = team_map.get(match.away_team_id) %}
+
+<!-- Score -->
+<div class="card p-8 mb-6">
+    <div class="flex items-center justify-center gap-8">
+        <div class="text-center flex-1">
+            <p class="text-4xl mb-2">{{ team_flags.get(home.name, '') if home else '' }}</p>
+            <a href="/teams/{{ home.id }}" class="text-2xl font-bold text-white hover:text-wc-teal transition">{{ home.name if home else '?' }}</a>
+            <p class="text-dark-400 text-sm">{{ home.owner if home else '' }}</p>
+        </div>
+        <div class="text-center">
+            {% if match.played %}
+            <p class="text-5xl font-black text-white">
+                {{ match.home_score }} <span class="text-dark-600 mx-2">-</span> {{ match.away_score }}
+            </p>
+            {% else %}
+            <p class="text-2xl text-dark-500">vs</p>
+            <p class="text-sm text-dark-600 mt-1">Ainda nao jogado</p>
+            {% endif %}
+        </div>
+        <div class="text-center flex-1">
+            <p class="text-4xl mb-2">{{ team_flags.get(away.name, '') if away else '' }}</p>
+            <a href="/teams/{{ away.id }}" class="text-2xl font-bold text-white hover:text-wc-teal transition">{{ away.name if away else '?' }}</a>
+            <p class="text-dark-400 text-sm">{{ away.owner if away else '' }}</p>
+        </div>
+    </div>
+</div>
+
+{% if match.played %}
+<!-- Events -->
+{% if match.events %}
+<div class="card p-6 mb-6">
+    <h2 class="text-lg font-semibold text-white mb-4">Eventos</h2>
+    <div class="space-y-3">
+        {% for evt in match.events %}
+        <div class="flex items-center gap-3 {% if evt.team_id == match.home_team_id %}justify-start{% else %}justify-end{% endif %}">
+            {% if evt.team_id == match.home_team_id %}
+            <span class="text-sm {% if evt.type == 'goal' %}text-wc-gold{% elif evt.type == 'assist' %}text-wc-teal{% elif evt.type == 'yellow_card' %}text-yellow-400{% elif evt.type == 'red_card' %}text-red-400{% endif %} font-bold w-8">
+                {% if evt.minute %}{{ evt.minute }}'{% endif %}
+            </span>
+            <span class="text-lg">
+                {% if evt.type == 'goal' %}⚽{% elif evt.type == 'assist' %}👟{% elif evt.type == 'yellow_card' %}🟨{% elif evt.type == 'red_card' %}🟥{% elif evt.type == 'own_goal' %}🔴{% endif %}
+            </span>
+            <span class="text-white">{{ evt.player_name }}</span>
+            <span class="text-dark-500 text-xs">{% if evt.type == 'goal' %}Gol{% elif evt.type == 'assist' %}Assistencia{% elif evt.type == 'yellow_card' %}Cartao amarelo{% elif evt.type == 'red_card' %}Cartao vermelho{% elif evt.type == 'own_goal' %}Gol contra{% else %}{{ evt.type }}{% endif %}</span>
+            {% else %}
+            <span class="text-dark-500 text-xs">{% if evt.type == 'goal' %}Gol{% elif evt.type == 'assist' %}Assistencia{% elif evt.type == 'yellow_card' %}Cartao amarelo{% elif evt.type == 'red_card' %}Cartao vermelho{% elif evt.type == 'own_goal' %}Gol contra{% else %}{{ evt.type }}{% endif %}</span>
+            <span class="text-white">{{ evt.player_name }}</span>
+            <span class="text-lg">
+                {% if evt.type == 'goal' %}⚽{% elif evt.type == 'assist' %}👟{% elif evt.type == 'yellow_card' %}🟨{% elif evt.type == 'red_card' %}🟥{% elif evt.type == 'own_goal' %}🔴{% endif %}
+            </span>
+            <span class="text-sm {% if evt.type == 'goal' %}text-wc-gold{% elif evt.type == 'assist' %}text-wc-teal{% elif evt.type == 'yellow_card' %}text-yellow-400{% elif evt.type == 'red_card' %}text-red-400{% endif %} font-bold w-8">
+                {% if evt.minute %}{{ evt.minute }}'{% endif %}
+            </span>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Match Stats -->
+{% if match.stats.home_possession is not none %}
+<div class="card p-6">
+    <h2 class="text-lg font-semibold text-white mb-4">Estatisticas</h2>
+    <div class="space-y-4">
+        {% macro stat_bar(label, home_val, away_val, is_percentage=False) %}
+        <div>
+            <div class="flex justify-between text-sm mb-1">
+                <span class="text-white font-medium">{{ home_val }}{% if is_percentage %}%{% endif %}</span>
+                <span class="text-dark-400">{{ label }}</span>
+                <span class="text-white font-medium">{{ away_val }}{% if is_percentage %}%{% endif %}</span>
+            </div>
+            {% set total = (home_val + away_val) if (home_val + away_val) > 0 else 1 %}
+            {% set home_pct = (home_val / total * 100) %}
+            <div class="flex h-2 rounded-full overflow-hidden bg-dark-700">
+                <div class="bg-wc-teal rounded-l-full" style="width: {{ home_pct }}%"></div>
+                <div class="bg-wc-purple rounded-r-full" style="width: {{ 100 - home_pct }}%"></div>
+            </div>
+        </div>
+        {% endmacro %}
+
+        {{ stat_bar("Posse de bola", match.stats.home_possession|default(0), match.stats.away_possession|default(0), True) }}
+        {{ stat_bar("Finalizacoes", match.stats.home_shots|default(0), match.stats.away_shots|default(0)) }}
+        {{ stat_bar("Chutes a gol", match.stats.home_shots_on_target|default(0), match.stats.away_shots_on_target|default(0)) }}
+        {{ stat_bar("Escanteios", match.stats.home_corners|default(0), match.stats.away_corners|default(0)) }}
+        {{ stat_bar("Faltas", match.stats.home_fouls|default(0), match.stats.away_fouls|default(0)) }}
+    </div>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

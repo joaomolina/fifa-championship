@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estatisticas - Copa EA FC 26</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-[#020617] text-[#e2e8f0] min-h-screen flex flex-col">
+    <div id="header"></div>
+    <main id="content" class="max-w-7xl mx-auto px-4 py-8 flex-1 w-full">
+        <p class="text-[#64748b] text-center py-20">Carregando...</p>
+    </main>
+    <div id="footer"></div>
+    <script src="js/app.js"></script>
+    <script>
+        App.init();
+        (async () => {
+            const [teams, matches] = await Promise.all([App.loadJSON('teams'), App.loadJSON('matches')]);
+            const teamMap = {};
+            teams.forEach(t => teamMap[t.id] = t);
+            const standings = App.computeStandings(matches, teams);
+            const scorers = App.getTopScorers(matches, 20);
+            const assisters = App.getTopAssisters(matches, 20);
+
+            Chart.defaults.color = '#94a3b8';
+
+            const scorerTable = scorers.length ? `<table class="w-full text-sm">
+                <thead><tr class="text-[#94a3b8] border-b border-[#334155]">
+                    <th class="py-2 text-left w-8">#</th><th class="py-2 text-left">Jogador</th>
+                    <th class="py-2 text-left">Selecao</th><th class="py-2 text-center">Gols</th>
+                </tr></thead><tbody>${scorers.map((s, i) => `<tr class="hover:bg-[#334155] border-b border-[#1e293b]">
+                    <td class="py-2 text-[#94a3b8]">${i + 1}</td>
+                    <td class="py-2 text-white font-medium">${s.player_name}</td>
+                    <td class="py-2 text-[#94a3b8]">${teamMap[s.team_id] ? App.teamLabel(teamMap[s.team_id].name) : ''}</td>
+                    <td class="py-2 text-center text-[#D4AF37] font-bold">${s.goals}</td>
+                </tr>`).join('')}</tbody></table>` : '';
+
+            App.html('content', `
+                <h1 class="text-3xl font-bold text-white mb-8">Estatisticas</h1>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                    <div class="card p-6">
+                        <h2 class="text-lg font-semibold text-white mb-4">Artilharia</h2>
+                        ${scorers.length ? '<canvas id="scorersChart" height="300"></canvas>' : '<p class="text-[#475569]">Nenhum gol marcado ainda.</p>'}
+                    </div>
+                    <div class="card p-6">
+                        <h2 class="text-lg font-semibold text-white mb-4">Assistencias</h2>
+                        ${assisters.length ? '<canvas id="assistsChart" height="300"></canvas>' : '<p class="text-[#475569]">Nenhuma assistencia ainda.</p>'}
+                    </div>
+                </div>
+                <div class="card p-6 mb-6">
+                    <h2 class="text-lg font-semibold text-white mb-4">Pontuacao das Selecoes</h2>
+                    ${standings.length ? '<canvas id="pointsChart" height="200"></canvas>' : '<p class="text-[#475569]">Sem dados ainda.</p>'}
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="card p-6">
+                        <h2 class="text-lg font-semibold text-white mb-4">Gols Marcados vs Sofridos</h2>
+                        ${standings.length ? '<canvas id="goalsChart" height="250"></canvas>' : ''}
+                    </div>
+                    <div class="card p-6">
+                        <h2 class="text-lg font-semibold text-white mb-4">Ranking de Artilheiros</h2>
+                        ${scorerTable || '<p class="text-[#475569]">Nenhum gol marcado ainda.</p>'}
+                    </div>
+                </div>
+            `);
+
+            if (scorers.length) {
+                const top = scorers.slice(0, 10);
+                new Chart(document.getElementById('scorersChart'), {
+                    type: 'bar', data: { labels: top.map(s => s.player_name), datasets: [{ label: 'Gols', data: top.map(s => s.goals), backgroundColor: '#D4AF37', borderRadius: 4 }] },
+                    options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { grid: { color: '#1e293b' }, ticks: { stepSize: 1 } }, y: { grid: { display: false } } } }
+                });
+            }
+            if (assisters.length) {
+                const top = assisters.slice(0, 10);
+                new Chart(document.getElementById('assistsChart'), {
+                    type: 'bar', data: { labels: top.map(a => a.player_name), datasets: [{ label: 'Assistencias', data: top.map(a => a.assists), backgroundColor: '#00B4D8', borderRadius: 4 }] },
+                    options: { indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { grid: { color: '#1e293b' }, ticks: { stepSize: 1 } }, y: { grid: { display: false } } } }
+                });
+            }
+            if (standings.length) {
+                new Chart(document.getElementById('pointsChart'), {
+                    type: 'bar', data: { labels: standings.map(s => s.team_name), datasets: [{ label: 'Pontos', data: standings.map(s => s.points), backgroundColor: standings.map(s => App.teamColor(s.team_name)), borderRadius: 4 }] },
+                    options: { plugins: { legend: { display: false } }, scales: { y: { grid: { color: '#1e293b' }, ticks: { stepSize: 1 } }, x: { grid: { display: false } } } }
+                });
+                new Chart(document.getElementById('goalsChart'), {
+                    type: 'bar', data: { labels: standings.map(s => s.team_name), datasets: [
+                        { label: 'Gols Marcados', data: standings.map(s => s.goals_for), backgroundColor: '#D4AF37', borderRadius: 4 },
+                        { label: 'Gols Sofridos', data: standings.map(s => s.goals_against), backgroundColor: '#C8102E', borderRadius: 4 },
+                    ] },
+                    options: { plugins: { legend: { position: 'top', labels: { boxWidth: 12 } } }, scales: { y: { grid: { color: '#1e293b' }, ticks: { stepSize: 1 } }, x: { grid: { display: false } } } }
+                });
+            }
+        })();
+    </script>
+</body>
+</html>

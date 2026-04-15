@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transferencias - Copa EA FC 26</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-[#020617] text-[#e2e8f0] min-h-screen flex flex-col">
+    <div id="header"></div>
+    <main id="content" class="max-w-7xl mx-auto px-4 py-8 flex-1 w-full">
+        <p class="text-[#64748b] text-center py-20">Carregando...</p>
+    </main>
+    <div id="footer"></div>
+    <script src="js/app.js"></script>
+    <script>
+        App.init();
+        (async () => {
+            const [windows, transfers, teams, players] = await Promise.all([
+                App.loadJSON('transfer_windows'), App.loadJSON('transfers'),
+                App.loadJSON('teams'), App.loadJSON('players'),
+            ]);
+            const teamMap = {}, playerMap = {};
+            teams.forEach(t => teamMap[t.id] = t);
+            players.forEach(p => playerMap[p.id] = p);
+
+            const windowCards = (windows || []).map(w => {
+                let badge = '<span class="text-xs bg-[#1e293b] text-[#475569] px-2 py-1 rounded">Pendente</span>';
+                let borderClass = '';
+                if (w.is_open) { badge = '<span class="text-xs bg-[#1B2A4A] text-[#00B4D8] px-2 py-1 rounded font-bold">ABERTA</span>'; borderClass = 'border-[#00B4D8]'; }
+                else if (w.is_completed) { badge = '<span class="text-xs bg-[#334155] text-[#94a3b8] px-2 py-1 rounded">Encerrada</span>'; }
+                let when = w.phase === 'group' ? (w.after_match_day === 0 ? 'Antes do torneio' : `Apos rodada ${w.after_match_day}`) : 'Antes da fase eliminatoria';
+                return `<div class="card p-5 ${borderClass}">
+                    <div class="flex items-center justify-between mb-2"><h3 class="text-white font-semibold">Janela ${w.number}</h3>${badge}</div>
+                    <p class="text-[#94a3b8] text-sm">${when}</p>
+                    <p class="text-[#475569] text-xs mt-1">Ate ${w.max_trades} trocas</p>
+                </div>`;
+            }).join('');
+
+            const transferList = (transfers || []).length ? transfers.map(t => {
+                const pa = playerMap[t.player_a_id], pb = playerMap[t.player_b_id];
+                const ta = teamMap[t.team_a_id], tb = teamMap[t.team_b_id];
+                return `<div class="bg-[#1e293b] rounded-lg p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs text-[#00B4D8] font-medium">Janela ${t.window}</span>
+                        ${t.timestamp ? `<span class="text-xs text-[#475569]">${t.timestamp}</span>` : ''}
+                    </div>
+                    <div class="flex items-center justify-center gap-4">
+                        <div class="text-center flex-1">
+                            <p class="text-white font-medium">${ta ? App.teamLabel(ta.name) : '?'}</p>
+                            <p class="text-[#f87171] text-sm mt-1">- ${pa ? pa.name : '?'} (${pa ? pa.overall : '?'})</p>
+                            <p class="text-[#34d399] text-sm">+ ${pb ? pb.name : '?'} (${pb ? pb.overall : '?'})</p>
+                        </div>
+                        <div class="text-[#475569] text-2xl">&#8644;</div>
+                        <div class="text-center flex-1">
+                            <p class="text-white font-medium">${tb ? App.teamLabel(tb.name) : '?'}</p>
+                            <p class="text-[#f87171] text-sm mt-1">- ${pb ? pb.name : '?'} (${pb ? pb.overall : '?'})</p>
+                            <p class="text-[#34d399] text-sm">+ ${pa ? pa.name : '?'} (${pa ? pa.overall : '?'})</p>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('') : '<p class="text-[#475569]">Nenhuma transferencia realizada ainda.</p>';
+
+            App.html('content', `
+                <h1 class="text-3xl font-bold text-white mb-8">Transferencias</h1>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">${windowCards}</div>
+                <div class="card p-6 mb-8">
+                    <h2 class="text-lg font-semibold text-white mb-3">Regras de Transferencia</h2>
+                    <ul class="text-[#94a3b8] text-sm space-y-2">
+                        <li>Cada jogador so pode ser trocado por outro da mesma posicao (GK por GK, DEF por DEF, etc.)</li>
+                        <li>Maximo de 3 trocas por janela de transferencia</li>
+                        <li>As trocas devem ser acordadas entre os dois tecnicos das selecoes</li>
+                        <li>A ultima janela acontece antes da fase eliminatoria (chaveamento)</li>
+                    </ul>
+                </div>
+                <div class="card p-6">
+                    <h2 class="text-lg font-semibold text-white mb-4">Historico de Transferencias</h2>
+                    <div class="space-y-4">${transferList}</div>
+                </div>
+            `);
+        })();
+    </script>
+</body>
+</html>

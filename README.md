@@ -78,7 +78,7 @@ Fonte: [EA Sports FC 26 Player Ratings](https://www.kaggle.com/datasets/justdhia
 - Antes do torneio comecar
 - A cada 4 rodadas na fase de grupos
 - Ultima janela antes da fase eliminatoria
-- Maximo 3 trocas por janela, mesma posicao
+- Maximo 3 trocas por janela, qualquer posicao
 
 ## Sorteio Balanceado
 

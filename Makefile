@@ -26,8 +26,8 @@ draft:
 	$(PYTHON) scripts/run_draft.py
 
 clean:
-	rm -rf tournament_data/*.json
+	rm -rf docs/data/*.json
 	@echo "Tournament data cleaned."
 
-reset: clean load-data draft
+reset: clean load-csv draft
 	@echo "Tournament reset complete."

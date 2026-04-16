@@ -1,72 +1,122 @@
-# FIFA Championship - EA FC 26
+# Copa EA FC 26 - FIFA World Cup 2026 Edition
 
-Tournament management system for an 8-player EA FC 26 championship.
+Sistema de gerenciamento de campeonato EA FC 26 para 8 participantes, com site hospedado no GitHub Pages.
+
+**Site ao vivo:** https://joaomolina.github.io/fifa-championship/
+
+## Participantes
+
+| Selecao | Tecnico | 
+|---|---|
+| Mexico | Joao Victor Molina |
+| Argentina | Joao Victor Pires |
+| Alemanha | Vinicius Lista |
+| Franca | Igor Vereda |
+| USA | Guilherme Rissi |
+| Espanha | Kaiki Aguiar |
+| Portugal | Felipe Aguiar |
+| Inglaterra | Reinaldo Urbano |
 
 ## Quick Start
 
 ```bash
-make install          # Install dependencies
-make load-data        # Generate sample player data (or use --csv for Kaggle data)
-make draft            # Run balanced draft to distribute players
-make dev              # Start the web server (development mode with auto-reload)
+make setup            # Cria venv e instala dependencias
+make load-csv CSV=data/ea_fc26_players.csv   # Carrega jogadores do dataset FC 26
+make draft            # Executa o sorteio balanceado
 ```
 
-Then open http://localhost:8000
+O site estatico e gerado em `docs/` e servido via GitHub Pages.
 
-## Architecture
+## Funcionalidades do Site
 
-- **Backend**: FastAPI + Jinja2 templates
-- **Frontend**: Tailwind CSS + Chart.js
-- **Data**: JSON files in `tournament_data/`
-- **Player Data**: Sample data or Kaggle CSV
+- **Painel** — visao geral do torneio (classificacao, artilharia, proximos jogos)
+- **Classificacao** — tabela do grupo com pontos, saldo de gols, posicao
+- **Jogos** — lista de todas as partidas por rodada com resultados
+- **Chaveamento** — bracket visual da fase eliminatoria (upper/lower)
+- **Selecoes** — cards dos 8 times com foto do tecnico, elenco e stats por posicao
+- **Formacao** — quadro tatico interativo com campo, drag & drop de jogadores e 7 formacoes
+- **Transferencias** — janelas de transferencia e historico de trocas
+- **Estatisticas** — artilharia, assistencias e graficos
 
-## Using Real Player Data
+## Arquitetura
 
-1. Download from Kaggle:
-   - https://www.kaggle.com/datasets/nyagami/ea-sports-fc-25-database-ratings-and-stats
-   - https://www.kaggle.com/datasets/mexwell/ea-fc25-player-database
-2. Place the CSV in `data/`
-3. Run: `python scripts/load_players.py --csv data/your_file.csv`
+- **Frontend**: site estatico (HTML/CSS/JS) hospedado no GitHub Pages (`docs/`)
+- **Estilizacao**: Tailwind CSS (CDN) + CSS customizado com tema Copa do Mundo 2026
+- **Dados**: arquivos JSON em `docs/data/` gerados pelos scripts Python
+- **Backend (scripts)**: Python com Pydantic para modelos e logica de torneio
+- **Dataset**: EA Sports FC 26 Player Ratings (Kaggle, marco/2026 — 16k+ jogadores)
 
-## Tournament Format
+## Dataset de Jogadores
 
-### Group Stage
-- 8 teams, single group, all vs all (28 matches, 7 rounds)
-- Win = 3pts, Draw = 1pt, Loss = 0pts
-- Top 4 qualify for upper bracket, 5th-6th play lower bracket entry
+Fonte: [EA Sports FC 26 Player Ratings](https://www.kaggle.com/datasets/justdhia/ea-sports-fc-26-player-ratings/data)
 
-### Bracket (Double Elimination Style)
-- **Quarters**: 1v4, 2v3 (upper) + 5v6 (lower entry)
-- **Upper Semi**: Winner(1v4) vs Winner(2v3)
-- **Lower R1**: Winner(5v6) vs Loser(1v4)
-- **Lower R2**: Winner(Lower R1) vs Loser(2v3)
-- **Lower Final**: Loser(Upper Semi) vs Winner(Lower R2)
-- **Grand Final**: Winner(Upper Semi) vs Winner(Lower Final)
-- Tiebreaker: group stage position
+1. Baixe o ZIP do Kaggle
+2. Extraia `ea_fc26_players.csv` na pasta `data/`
+3. Execute: `make load-csv CSV=data/ea_fc26_players.csv`
 
-### Squad Composition (26 players per team)
+## Formato do Torneio
+
+### Fase de Grupos
+- 8 selecoes, grupo unico, todos contra todos (28 jogos, 7 rodadas)
+- Vitoria = 3pts | Empate = 1pt | Derrota = 0pts
+- Top 4 classificados direto, 5o e 6o disputam repescagem
+
+### Fase Eliminatoria (Double Elimination)
+- **Quartas**: 1o vs 4o, 2o vs 3o (upper) + 5o vs 6o (lower entry)
+- **Semifinal Upper**: Vencedor(1v4) vs Vencedor(2v3)
+- **Lower R1**: Vencedor(5v6) vs Perdedor(1v4)
+- **Lower R2**: Vencedor(Lower R1) vs Perdedor(2v3)
+- **Final Lower**: Perdedor(Upper Semi) vs Vencedor(Lower R2)
+- **Grande Final**: Vencedor(Upper Semi) vs Vencedor(Final Lower)
+- Criterio de desempate: posicao na fase de grupos
+
+### Composicao do Elenco (26 jogadores por selecao)
 - GK: 3 | DEF: 8 | MID: 8 | FWD: 7
+- Garantia de diversidade: cada time tem pelo menos 1 jogador de cada sub-posicao (CB, LB, RB, CDM, CM, CAM, LM, RM, ST, LW, RW)
 
-### Transfer Windows
-- Before tournament starts
-- Every 4 match days during group stage
-- Final window before bracket phase
-- Max 3 trades per window, same position group only
+### Janelas de Transferencia
+- Antes do torneio comecar
+- A cada 4 rodadas na fase de grupos
+- Ultima janela antes da fase eliminatoria
+- Maximo 3 trocas por janela, mesma posicao
 
-## Project Structure
+## Sorteio Balanceado
+
+O draft utiliza um algoritmo em duas fases:
+
+1. **Fase obrigatoria**: snake draft por sub-posicao, garantindo diversidade tatica
+2. **Fase de preenchimento**: vagas restantes com os melhores disponiveis do grupo de posicao
+3. **Otimizacao**: trocas entre times (mesma sub-posicao) para minimizar variancia de overall
+
+Resultado: spread de ~0.04 no overall medio entre os 8 times.
+
+## Estrutura do Projeto
 
 ```
+docs/                   # Site estatico (GitHub Pages)
+  index.html            # Painel principal
+  standings.html        # Classificacao
+  matches.html          # Lista de jogos
+  match.html            # Detalhe da partida
+  bracket.html          # Chaveamento eliminatorio
+  teams.html            # Lista de selecoes
+  team.html             # Detalhe da selecao
+  formacao.html         # Montagem tatica (drag & drop)
+  transfers.html        # Janelas de transferencia
+  stats.html            # Estatisticas e graficos
+  js/app.js             # Logica compartilhada (dados, nav, utilitarios)
+  css/style.css         # Tema Copa do Mundo 2026
+  data/                 # JSONs do torneio (players, teams, matches, etc.)
+  photos/               # Fotos dos participantes
 src/
-  app.py          # FastAPI application
-  models.py       # Pydantic data models
-  database.py     # JSON persistence layer
-  draft.py        # Balanced draft algorithm
-  tournament.py   # Tournament logic
-  templates/      # Jinja2 HTML templates
-  static/         # CSS, JS
+  models.py             # Modelos Pydantic (Player, Team, Match, etc.)
+  database.py           # Persistencia JSON (leitura/escrita em docs/data/)
+  draft.py              # Algoritmo de sorteio balanceado
+  tournament.py         # Logica de torneio (grupos, bracket, artilharia)
+  app.py                # FastAPI (uso local/dev)
 scripts/
-  load_players.py # Load/generate player data
-  run_draft.py    # Execute the draft
-tournament_data/  # JSON data files (generated)
-data/             # Raw CSV data (optional)
+  load_players.py       # Carrega jogadores do CSV do FC 26
+  run_draft.py          # Executa o sorteio e gera calendario
+data/                   # CSVs brutos do Kaggle
+photos/                 # Fotos originais dos participantes
 ```

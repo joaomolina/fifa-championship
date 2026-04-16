@@ -1,15 +1,11 @@
-"""Load player data from a Kaggle CSV or generate sample data for testing.
+"""Load player data from the EA FC 26 dataset.
 
 Usage:
-    python scripts/load_players.py                    # Generate sample data
-    python scripts/load_players.py --csv data/fc25.csv  # Load from CSV
+    python scripts/load_players.py                              # Generate sample data
+    python scripts/load_players.py --csv data/ea_fc26_players.csv  # Load from CSV
 
-To get real data, download from Kaggle:
-    https://www.kaggle.com/datasets/nyagami/ea-sports-fc-25-database-ratings-and-stats
-    or
-    https://www.kaggle.com/datasets/mexwell/ea-fc25-player-database
-
-Place the CSV in the data/ folder and run with --csv flag.
+Dataset source:
+    https://www.kaggle.com/datasets/justdhia/ea-sports-fc-26-player-ratings/data
 """
 import argparse
 import random
@@ -24,24 +20,72 @@ from src.models import Player, PositionGroup, POSITION_GROUP_MAP, SQUAD_COMPOSIT
 from src import database as db
 
 
-POSITIONS_PER_GROUP = {
-    PositionGroup.GK: ["GK"],
-    PositionGroup.DEF: ["CB", "CB", "CB", "LB", "RB", "LWB", "RWB", "CB"],
-    PositionGroup.MID: ["CM", "CDM", "CAM", "CM", "RM", "LM", "CDM", "CAM"],
-    PositionGroup.FWD: ["ST", "ST", "LW", "RW", "CF", "ST", "RW"],
-}
+def _safe_int(value, default: int = 0) -> int:
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return default
 
 
 def load_from_csv(csv_path: str) -> list[Player]:
-    """Load players from a Kaggle-style CSV file."""
+    """Load players from the EA FC 26 CSV (ea_fc26_players.csv)."""
     df = pd.read_csv(csv_path)
 
-    col_map = {}
+    col_map = _detect_columns(df)
+
+    if "name" not in col_map or "overall" not in col_map or "position" not in col_map:
+        print(f"Could not find required columns. Available: {list(df.columns)}")
+        sys.exit(1)
+
+    players = []
+    for idx, row in df.iterrows():
+        pos_raw = str(row[col_map["position"]]).strip().upper()
+        if pos_raw not in POSITION_GROUP_MAP:
+            continue
+
+        name = _resolve_name(row, col_map)
+
+        players.append(Player(
+            id=idx + 1,
+            name=name,
+            overall=int(row[col_map["overall"]]),
+            position=pos_raw,
+            position_group=POSITION_GROUP_MAP[pos_raw],
+            nationality=str(row.get(col_map.get("nationality", ""), "")) if "nationality" in col_map else "",
+            club=str(row.get(col_map.get("club", ""), "")) if "club" in col_map else "",
+            pace=_safe_int(row.get(col_map.get("pace", ""), 0)) if "pace" in col_map else 0,
+            shooting=_safe_int(row.get(col_map.get("shooting", ""), 0)) if "shooting" in col_map else 0,
+            passing=_safe_int(row.get(col_map.get("passing", ""), 0)) if "passing" in col_map else 0,
+            dribbling=_safe_int(row.get(col_map.get("dribbling", ""), 0)) if "dribbling" in col_map else 0,
+            defending=_safe_int(row.get(col_map.get("defending", ""), 0)) if "defending" in col_map else 0,
+            physical=_safe_int(row.get(col_map.get("physical", ""), 0)) if "physical" in col_map else 0,
+        ))
+
+    players.sort(key=lambda p: p.overall, reverse=True)
+
+    needed = {pg: count * NUM_TEAMS for pg, count in SQUAD_COMPOSITION.items()}
+    selected: list[Player] = []
+    counts = {pg: 0 for pg in PositionGroup}
+
+    for p in players:
+        if counts[p.position_group] < needed[p.position_group]:
+            selected.append(p)
+            counts[p.position_group] += 1
+
+    for i, p in enumerate(selected):
+        p.id = i + 1
+
+    return selected
+
+
+def _detect_columns(df: pd.DataFrame) -> dict[str, str]:
+    """Auto-detect column names across different CSV formats."""
+    col_map: dict[str, str] = {}
     for col in df.columns:
         low = col.lower().strip()
-        if low in ("name", "long_name", "player_name", "known_as"):
+        if low in ("commonname", "name", "long_name", "player_name", "known_as"):
             col_map.setdefault("name", col)
-        elif low in ("overall", "ovr", "overall_rating"):
+        elif low in ("overallrating", "overall", "ovr", "overall_rating"):
             col_map.setdefault("overall", col)
         elif low in ("position", "player_positions", "best_position", "pos"):
             col_map.setdefault("position", col)
@@ -61,50 +105,24 @@ def load_from_csv(csv_path: str) -> list[Player]:
             col_map.setdefault("defending", col)
         elif low in ("physical", "phy", "physicality"):
             col_map.setdefault("physical", col)
+        elif low in ("firstname",):
+            col_map.setdefault("first_name", col)
+        elif low in ("lastname",):
+            col_map.setdefault("last_name", col)
+    return col_map
 
-    if "name" not in col_map or "overall" not in col_map or "position" not in col_map:
-        print(f"Could not find required columns. Available: {list(df.columns)}")
-        sys.exit(1)
 
-    players = []
-    for idx, row in df.iterrows():
-        pos_raw = str(row[col_map["position"]]).strip()
-        pos = pos_raw.split(",")[0].strip().upper() if "," in pos_raw else pos_raw.upper()
+def _resolve_name(row: pd.Series, col_map: dict[str, str]) -> str:
+    """Pick the best display name: commonName > firstName+lastName."""
+    if "name" in col_map:
+        val = row.get(col_map["name"])
+        if pd.notna(val) and str(val).strip():
+            return str(val).strip()
 
-        if pos not in POSITION_GROUP_MAP:
-            continue
-
-        players.append(Player(
-            id=idx + 1,
-            name=str(row[col_map["name"]]),
-            overall=int(row[col_map["overall"]]),
-            position=pos,
-            position_group=POSITION_GROUP_MAP[pos],
-            nationality=str(row.get(col_map.get("nationality", ""), "")) if "nationality" in col_map else "",
-            club=str(row.get(col_map.get("club", ""), "")) if "club" in col_map else "",
-            pace=int(row.get(col_map.get("pace", ""), 0) or 0) if "pace" in col_map else 0,
-            shooting=int(row.get(col_map.get("shooting", ""), 0) or 0) if "shooting" in col_map else 0,
-            passing=int(row.get(col_map.get("passing", ""), 0) or 0) if "passing" in col_map else 0,
-            dribbling=int(row.get(col_map.get("dribbling", ""), 0) or 0) if "dribbling" in col_map else 0,
-            defending=int(row.get(col_map.get("defending", ""), 0) or 0) if "defending" in col_map else 0,
-            physical=int(row.get(col_map.get("physical", ""), 0) or 0) if "physical" in col_map else 0,
-        ))
-
-    players.sort(key=lambda p: p.overall, reverse=True)
-
-    needed = {pg: count * NUM_TEAMS for pg, count in SQUAD_COMPOSITION.items()}
-    selected: list[Player] = []
-    counts = {pg: 0 for pg in PositionGroup}
-
-    for p in players:
-        if counts[p.position_group] < needed[p.position_group]:
-            selected.append(p)
-            counts[p.position_group] += 1
-
-    for i, p in enumerate(selected):
-        p.id = i + 1
-
-    return selected
+    first = str(row.get(col_map.get("first_name", ""), "")).strip()
+    last = str(row.get(col_map.get("last_name", ""), "")).strip()
+    full = f"{first} {last}".strip()
+    return full if full else "Unknown"
 
 
 SAMPLE_PLAYERS = {

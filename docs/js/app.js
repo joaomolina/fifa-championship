@@ -149,8 +149,8 @@ const App = (() => {
     function renderNav() {
         const path = window.location.pathname.split('/').pop() || 'index.html';
         const links = [
-            ['index.html', 'Painel'], ['standings.html', 'Classificacao'], ['matches.html', 'Jogos'],
-            ['bracket.html', 'Chaveamento'], ['teams.html', 'Selecoes'], ['jogadores.html', 'Jogadores'],
+            ['index.html', 'Painel'], ['tabela.html', 'Tabela'],
+            ['teams.html', 'Selecoes'], ['jogadores.html', 'Jogadores'],
             ['formacao.html', 'Formacao'], ['transfers.html', 'Transferencias'], ['stats.html', 'Estatisticas'],
         ];
         const navLinks = links.map(([href, label]) => {

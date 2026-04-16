@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tabela - Copa EA FC 26</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .tab-btn { position: relative; padding: 12px 20px; font-weight: 600; font-size: 14px; color: #94a3b8; transition: all 0.2s; border-bottom: 3px solid transparent; }
+        .tab-btn:hover { color: #e2e8f0; }
+        .tab-btn.active { color: #00B4D8; border-bottom-color: #00B4D8; }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+        .bracket-match { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 12px 16px; min-width: 240px; }
+        .bracket-match.winner { border-color: #00B4D8; }
+        .bracket-team { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; }
+        .bracket-team.is-winner { color: #D4AF37; font-weight: 700; }
+        .bracket-team.is-loser { color: #64748b; }
+    </style>
+</head>
+<body class="bg-[#020617] text-[#e2e8f0] min-h-screen flex flex-col">
+    <div id="header"></div>
+    <main class="max-w-7xl mx-auto px-4 py-8 flex-1 w-full">
+        <h1 class="text-3xl font-bold text-white mb-6">Tabela do Torneio</h1>
+        <div class="border-b border-[#334155] mb-8 flex gap-1">
+            <button class="tab-btn active" onclick="switchTab('classificacao')">Classificacao</button>
+            <button class="tab-btn" onclick="switchTab('jogos')">Jogos</button>
+            <button class="tab-btn" onclick="switchTab('chaveamento')">Chaveamento</button>
+        </div>
+        <div id="tab-classificacao" class="tab-panel active"></div>
+        <div id="tab-jogos" class="tab-panel"></div>
+        <div id="tab-chaveamento" class="tab-panel"></div>
+    </main>
+    <div id="footer"></div>
+    <script src="js/app.js"></script>
+    <script>
+        App.init();
+
+        window.switchTab = function(tab) {
+            document.querySelectorAll('.tab-btn').forEach((btn, i) => {
+                const tabs = ['classificacao','jogos','chaveamento'];
+                btn.classList.toggle('active', tabs[i] === tab);
+            });
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            document.getElementById('tab-' + tab).classList.add('active');
+            history.replaceState(null, '', `tabela.html?tab=${tab}`);
+        };
+
+        (async () => {
+            const [teams, matches] = await Promise.all([App.loadJSON('teams'), App.loadJSON('matches')]);
+            const teamMap = {};
+            teams.forEach(t => teamMap[t.id] = t);
+
+            // === CLASSIFICACAO ===
+            const standings = App.computeStandings(matches, teams);
+            const standingsRows = standings.map(r => {
+                let borderColor = 'border-l-[#C8102E]';
+                let posColor = 'text-[#f87171]';
+                if (r.position === 1) { borderColor = 'border-l-[#00B4D8]'; posColor = 'text-[#D4AF37]'; }
+                else if (r.position <= 4) { borderColor = 'border-l-[#00B4D8]'; posColor = 'text-[#00B4D8]'; }
+                else if (r.position <= 6) { borderColor = 'border-l-[#F4A100]'; posColor = 'text-[#F4A100]'; }
+                const gdColor = r.goal_difference > 0 ? 'text-[#34d399]' : r.goal_difference < 0 ? 'text-[#f87171]' : 'text-[#94a3b8]';
+                return `<tr class="hover:bg-[#334155] border-b border-[#1e293b] border-l-4 ${borderColor} transition">
+                    <td class="py-4 font-bold text-lg ${posColor}">${r.position}</td>
+                    <td class="py-4"><a href="team.html?id=${r.team_id}" class="text-white font-semibold hover:text-[#00B4D8] transition text-lg"><span class="mr-2">${App.flag(r.team_name)}</span>${r.team_name}</a></td>
+                    <td class="py-4 text-[#94a3b8]">${r.owner}</td>
+                    <td class="py-4 text-center text-[#cbd5e1]">${r.played}</td>
+                    <td class="py-4 text-center text-[#34d399] font-medium">${r.wins}</td>
+                    <td class="py-4 text-center text-[#94a3b8]">${r.draws}</td>
+                    <td class="py-4 text-center text-[#f87171]">${r.losses}</td>
+                    <td class="py-4 text-center text-[#cbd5e1]">${r.goals_for}</td>
+                    <td class="py-4 text-center text-[#cbd5e1]">${r.goals_against}</td>
+                    <td class="py-4 text-center font-medium ${gdColor}">${r.goal_difference}</td>
+                    <td class="py-4 text-center"><span class="bg-[#1e293b] text-white font-bold text-lg px-3 py-1 rounded">${r.points}</span></td>
+                </tr>`;
+            }).join('');
+
+            App.html('tab-classificacao', `
+                <div class="card p-6">
+                    <table class="w-full">
+                        <thead><tr class="text-[#94a3b8] text-sm border-b border-[#334155]">
+                            <th class="py-3 text-left w-10">#</th><th class="py-3 text-left">Selecao</th><th class="py-3 text-left">Tecnico</th>
+                            <th class="py-3 text-center">J</th><th class="py-3 text-center">V</th><th class="py-3 text-center">E</th>
+                            <th class="py-3 text-center">D</th><th class="py-3 text-center">GP</th><th class="py-3 text-center">GC</th>
+                            <th class="py-3 text-center">SG</th><th class="py-3 text-center font-bold text-white">Pts</th>
+                        </tr></thead>
+                        <tbody>${standingsRows}</tbody>
+                    </table>
+                    <div class="mt-6 flex flex-wrap gap-6 text-sm text-[#94a3b8]">
+                        <span class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-[#00B4D8]"></span> Classificado para chave superior (1-4)</span>
+                        <span class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-[#F4A100]"></span> Repescagem / chave inferior (5-6)</span>
+                        <span class="flex items-center gap-2"><span class="w-3 h-3 rounded bg-[#C8102E]"></span> Eliminado (7-8)</span>
+                    </div>
+                </div>
+            `);
+
+            // === JOGOS ===
+            const groupMatches = matches.filter(m => m.phase === 'group');
+            const bracketMatches = matches.filter(m => m.phase !== 'group');
+            const days = {};
+            groupMatches.forEach(m => { (days[m.match_day] = days[m.match_day] || []).push(m); });
+
+            const groupHTML = Object.keys(days).sort((a, b) => a - b).map(day => {
+                const dayMatches = days[day].map(m => {
+                    const h = teamMap[m.home_team_id], a = teamMap[m.away_team_id];
+                    const score = m.played ? `<span class="text-[#00B4D8] font-bold text-lg">${m.home_score} - ${m.away_score}</span>` : '<span class="text-[#475569] text-sm">vs</span>';
+                    return `<a href="match.html?id=${m.id}" class="flex items-center justify-between bg-[#1e293b] rounded-lg p-4 hover:bg-[#334155] transition">
+                        <div class="flex-1 text-right"><span class="text-white font-medium">${h ? App.teamLabel(h.name) : '?'}</span> <span class="text-[#475569] text-xs ml-1">${h ? h.owner : ''}</span></div>
+                        <div class="w-24 text-center">${score}</div>
+                        <div class="flex-1"><span class="text-[#475569] text-xs mr-1">${a ? a.owner : ''}</span> <span class="text-white font-medium">${a ? App.teamLabel(a.name) : '?'}</span></div>
+                    </a>`;
+                }).join('');
+                return `<div class="card p-6"><h3 class="text-sm font-semibold text-[#00B4D8] mb-4">Rodada ${day}</h3><div class="space-y-2">${dayMatches}</div></div>`;
+            }).join('');
+
+            let bracketJogosHTML = '';
+            if (bracketMatches.length) {
+                const bm = bracketMatches.map(m => {
+                    const h = teamMap[m.home_team_id], a = teamMap[m.away_team_id];
+                    const score = m.played ? `<span class="text-[#00B4D8] font-bold text-lg">${m.home_score} - ${m.away_score}</span>` : '<span class="text-[#475569] text-sm">vs</span>';
+                    return `<a href="match.html?id=${m.id}" class="flex items-center justify-between bg-[#1e293b] rounded-lg p-4 hover:bg-[#334155] transition">
+                        <span class="text-xs text-[#00B4D8] font-medium w-40">${App.phaseLabel(m.phase)}</span>
+                        <div class="flex-1 text-right"><span class="text-white font-medium">${h ? App.teamLabel(h.name) : '?'}</span></div>
+                        <div class="w-24 text-center">${score}</div>
+                        <div class="flex-1"><span class="text-white font-medium">${a ? App.teamLabel(a.name) : '?'}</span></div>
+                    </a>`;
+                }).join('');
+                bracketJogosHTML = `<h2 class="text-xl font-semibold text-white mb-4 mt-10">Fase Eliminatoria</h2><div class="card p-6"><div class="space-y-2">${bm}</div></div>`;
+            }
+
+            App.html('tab-jogos', `
+                <h2 class="text-xl font-semibold text-white mb-4">Fase de Grupos</h2>
+                <div class="space-y-6">${groupHTML}</div>
+                ${bracketJogosHTML}
+            `);
+
+            // === CHAVEAMENTO ===
+            const posMap = {};
+            standings.forEach(r => posMap[r.team_id] = r.position);
+
+            function getWinner(m) {
+                if (!m || !m.played) return null;
+                if (m.home_score > m.away_score) return m.home_team_id;
+                if (m.away_score > m.home_score) return m.away_team_id;
+                const hp = posMap[m.home_team_id] || 99, ap = posMap[m.away_team_id] || 99;
+                return hp < ap ? m.home_team_id : m.away_team_id;
+            }
+
+            const phaseMap = {};
+            matches.forEach(m => { if (m.phase !== 'group') phaseMap[m.phase] = m; });
+
+            function matchCard(phase, label) {
+                const m = phaseMap[phase];
+                if (!m) {
+                    return `<div class="bracket-match">
+                        <p class="text-xs text-[#00B4D8] font-medium mb-2">${label}</p>
+                        <div class="bracket-team text-[#334155]"><span>A definir</span><span>-</span></div>
+                        <div class="border-t border-[#334155] my-1"></div>
+                        <div class="bracket-team text-[#334155]"><span>A definir</span><span>-</span></div>
+                    </div>`;
+                }
+                const w = getWinner(m);
+                const ht = teamMap[m.home_team_id], at = teamMap[m.away_team_id];
+                const hClass = w === m.home_team_id ? 'is-winner' : w ? 'is-loser' : '';
+                const aClass = w === m.away_team_id ? 'is-winner' : w ? 'is-loser' : '';
+                return `<div class="bracket-match ${w ? 'winner' : ''}">
+                    <p class="text-xs text-[#00B4D8] font-medium mb-2">${label}</p>
+                    <a href="match.html?id=${m.id}" class="block hover:opacity-80 transition">
+                        <div class="bracket-team ${hClass}"><span>${ht ? App.teamLabel(ht.name) : 'A definir'}</span><span class="font-bold">${m.played ? m.home_score : ''}</span></div>
+                        <div class="border-t border-[#334155] my-1"></div>
+                        <div class="bracket-team ${aClass}"><span>${at ? App.teamLabel(at.name) : 'A definir'}</span><span class="font-bold">${m.played ? m.away_score : ''}</span></div>
+                    </a>
+                </div>`;
+            }
+
+            App.html('tab-chaveamento', `
+                <p class="text-[#94a3b8] mb-8">Criterio de desempate: posicao na fase de grupos</p>
+                <div class="overflow-x-auto pb-8"><div class="min-w-[1000px]">
+                    <div class="mb-3"><span class="text-sm font-bold text-[#00B4D8] bg-[#1B2A4A] px-3 py-1 rounded">CHAVE SUPERIOR</span></div>
+                    <div class="flex items-start gap-8 mb-10">
+                        <div class="flex flex-col gap-6">${matchCard('quarter_1v4','1o vs 4o')}${matchCard('quarter_2v3','2o vs 3o')}</div>
+                        <div class="flex flex-col justify-center h-full mt-16"><div class="w-8 border-t-2 border-[#334155]"></div></div>
+                        <div class="flex flex-col justify-center mt-8">${matchCard('upper_semi','Semifinal (chave superior)')}</div>
+                        <div class="flex flex-col justify-center mt-8"><div class="w-8 border-t-2 border-[#334155]"></div></div>
+                        <div class="flex flex-col justify-center mt-8">${matchCard('grand_final','GRANDE FINAL \u{1F3C6}')}</div>
+                    </div>
+                    <div class="mb-3"><span class="text-sm font-bold text-[#F4A100] bg-[#1B2A4A] px-3 py-1 rounded">CHAVE INFERIOR</span></div>
+                    <div class="flex items-start gap-8">
+                        <div class="flex flex-col gap-6">${matchCard('quarter_5v6','5o vs 6o')}</div>
+                        <div class="flex flex-col justify-center mt-6"><div class="w-8 border-t-2 border-[#334155]"></div></div>
+                        <div class="flex flex-col justify-center">${matchCard('lower_r1','Chave inferior — 1a rodada')}</div>
+                        <div class="flex flex-col justify-center"><div class="w-8 border-t-2 border-[#334155]"></div></div>
+                        <div class="flex flex-col justify-center">${matchCard('lower_r2','Chave inferior — 2a rodada')}</div>
+                        <div class="flex flex-col justify-center"><div class="w-8 border-t-2 border-[#334155]"></div></div>
+                        <div class="flex flex-col justify-center">${matchCard('lower_final','Final da chave inferior')}</div>
+                    </div>
+                </div></div>
+                <div class="card p-6 mt-4">
+                    <h3 class="text-sm font-semibold text-white mb-3">Como funciona</h3>
+                    <div class="text-sm text-[#94a3b8] space-y-1">
+                        <p>1. Quartas na chave superior: 1o vs 4o e 2o vs 3o; entrada na chave inferior: 5o vs 6o</p>
+                        <p>2. Semifinal (chave superior): vencedores das quartas da chave superior se enfrentam</p>
+                        <p>3. Chave inferior — 1a rodada: vencedor do 5o vs 6o enfrenta o perdedor do 1o vs 4o</p>
+                        <p>4. Chave inferior — 2a rodada: vencedor da 1a rodada inferior enfrenta o perdedor do 2o vs 3o</p>
+                        <p>5. Final da chave inferior: perdedor da semifinal superior enfrenta o vencedor da 2a rodada inferior</p>
+                        <p>6. Grande final: vencedor da semifinal superior vs vencedor da final inferior</p>
+                        <p class="text-[#475569] mt-2">Desempate: posicao na fase de grupos</p>
+                    </div>
+                </div>
+            `);
+
+            // Activate tab from URL param
+            const param = App.getParam('tab');
+            if (param && ['classificacao','jogos','chaveamento'].includes(param)) {
+                switchTab(param);
+            }
+        })();
+    </script>
+</body>
+</html>

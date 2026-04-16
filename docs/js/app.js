@@ -12,6 +12,17 @@ const App = (() => {
         'Mexico': '#006847', 'USA': '#002868',
     };
 
+    const OWNER_PHOTOS = {
+        'Joao Victor Molina': 'photos/joao_molina.jpg',
+        'Joao Victor Pires': 'photos/joao_pires.jpg',
+        'Vinicius Lista': 'photos/vinicius_lista.jpg',
+        'Igor Vereda': 'photos/igor_vereda.jpg',
+        'Guilherme Rissi': 'photos/guilherme_rissi.jpg',
+        'Kaiki Aguiar': 'photos/kaiki_aguiar.jpg',
+        'Felipe Aguiar': 'photos/felipe_aguiar.jpg',
+        'Reinaldo Urbano': 'photos/reinaldo_urbano.jpg',
+    };
+
     const PHASE_LABELS = {
         'group': 'Fase de Grupos',
         'quarter_1v4': 'Quartas: 1o vs 4o',
@@ -49,6 +60,10 @@ const App = (() => {
 
     function teamColor(teamName) {
         return TEAM_COLORS[teamName] || '#00B4D8';
+    }
+
+    function ownerPhoto(ownerName) {
+        return OWNER_PHOTOS[ownerName] || '';
     }
 
     function phaseLabel(phase) {
@@ -182,8 +197,8 @@ const App = (() => {
     }
 
     return {
-        init, loadJSON, flag, teamLabel, teamColor, phaseLabel,
+        init, loadJSON, flag, teamLabel, teamColor, phaseLabel, ownerPhoto,
         el, qs, html, getParam, computeStandings, getTopScorers, getTopAssisters,
-        TEAM_FLAGS, TEAM_COLORS, PHASE_LABELS,
+        TEAM_FLAGS, TEAM_COLORS, PHASE_LABELS, OWNER_PHOTOS,
     };
 })();

@@ -14,6 +14,7 @@ from src.models import (
     Team,
     PositionGroup,
     SQUAD_COMPOSITION,
+    SUB_POSITION_MINIMUMS,
     NUM_TEAMS,
 )
 
@@ -54,7 +55,11 @@ def snake_draft(
     num_teams: int = NUM_TEAMS,
     seed: int | None = None,
 ) -> list[list[Player]]:
-    """Distribute players to teams using snake draft per position group.
+    """Distribute players to teams using a two-phase snake draft.
+
+    Phase 1: For each position group with sub-position requirements,
+    assign one player of each required sub-position per team via snake draft.
+    Phase 2: Fill remaining slots with best available from the position group.
 
     Returns a list of lists, where index = team index.
     """
@@ -63,6 +68,7 @@ def snake_draft(
 
     groups = _group_by_position(players)
     team_pools: list[list[Player]] = [[] for _ in range(num_teams)]
+    assigned_ids: set[int] = set()
 
     for pos_group, count_needed in SQUAD_COMPOSITION.items():
         pool = groups.get(pos_group, [])
@@ -74,14 +80,35 @@ def snake_draft(
                 f"Not enough {pos_group.value} players: need {total_needed}, have {len(pool)}"
             )
 
-        pool = pool[:total_needed]
-        orders = _snake_order(num_teams, count_needed)
+        mandatory_rounds = 0
+        if pos_group in SUB_POSITION_MINIMUMS:
+            sub_reqs = SUB_POSITION_MINIMUMS[pos_group]
+            for sub_pos, min_count in sub_reqs.items():
+                sub_pool = [p for p in pool if p.position == sub_pos and p.id not in assigned_ids]
+                if len(sub_pool) < min_count * num_teams:
+                    raise ValueError(
+                        f"Not enough {sub_pos} players: need {min_count * num_teams}, have {len(sub_pool)}"
+                    )
+                sub_pool = sub_pool[:min_count * num_teams]
+                for round_order in _snake_order(num_teams, min_count):
+                    for team_idx in round_order:
+                        p = sub_pool.pop(0)
+                        team_pools[team_idx].append(p)
+                        assigned_ids.add(p.id)
+                mandatory_rounds += min_count
+            remaining_rounds = count_needed - mandatory_rounds
+        else:
+            remaining_rounds = count_needed
 
-        player_idx = 0
-        for round_order in orders:
-            for team_idx in round_order:
-                team_pools[team_idx].append(pool[player_idx])
-                player_idx += 1
+        if remaining_rounds > 0:
+            fill_pool = [p for p in pool if p.id not in assigned_ids][:remaining_rounds * num_teams]
+            orders = _snake_order(num_teams, remaining_rounds)
+            player_idx = 0
+            for round_order in orders:
+                for team_idx in round_order:
+                    team_pools[team_idx].append(fill_pool[player_idx])
+                    assigned_ids.add(fill_pool[player_idx].id)
+                    player_idx += 1
 
     return team_pools
 
@@ -122,14 +149,14 @@ def optimize_balance(
     for _ in range(max_iterations):
         t1, t2 = random.sample(range(num_teams), 2)
 
-        common_groups = set(p.position_group for p in team_pools[t1]) & \
-                        set(p.position_group for p in team_pools[t2])
-        if not common_groups:
+        common_positions = set(p.position for p in team_pools[t1]) & \
+                           set(p.position for p in team_pools[t2])
+        if not common_positions:
             continue
 
-        pg = random.choice(list(common_groups))
-        candidates_t1 = [i for i, p in enumerate(team_pools[t1]) if p.position_group == pg]
-        candidates_t2 = [i for i, p in enumerate(team_pools[t2]) if p.position_group == pg]
+        pos = random.choice(list(common_positions))
+        candidates_t1 = [i for i, p in enumerate(team_pools[t1]) if p.position == pos]
+        candidates_t2 = [i for i, p in enumerate(team_pools[t2]) if p.position == pos]
 
         if not candidates_t1 or not candidates_t2:
             continue

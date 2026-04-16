@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import pandas as pd
 
-from src.models import Player, PositionGroup, POSITION_GROUP_MAP, SQUAD_COMPOSITION, NUM_TEAMS
+from src.models import Player, PositionGroup, POSITION_GROUP_MAP, SQUAD_COMPOSITION, NUM_TEAMS, SUB_POSITION_MINIMUMS
 from src import database as db
 
 
@@ -65,12 +65,30 @@ def load_from_csv(csv_path: str) -> list[Player]:
 
     needed = {pg: count * NUM_TEAMS for pg, count in SQUAD_COMPOSITION.items()}
     selected: list[Player] = []
-    counts = {pg: 0 for pg in PositionGroup}
+    selected_ids: set[int] = set()
 
-    for p in players:
-        if counts[p.position_group] < needed[p.position_group]:
-            selected.append(p)
-            counts[p.position_group] += 1
+    for pg, total in needed.items():
+        if pg in SUB_POSITION_MINIMUMS:
+            sub_reqs = SUB_POSITION_MINIMUMS[pg]
+            reserved: list[Player] = []
+            for sub_pos, min_count in sub_reqs.items():
+                sub_pool = [p for p in players if p.position == sub_pos and p.id not in selected_ids]
+                take = min_count * NUM_TEAMS
+                for p in sub_pool[:take]:
+                    reserved.append(p)
+                    selected_ids.add(p.id)
+
+            remaining_slots = total - len(reserved)
+            fill_pool = [p for p in players if p.position_group == pg and p.id not in selected_ids]
+            for p in fill_pool[:remaining_slots]:
+                reserved.append(p)
+                selected_ids.add(p.id)
+            selected.extend(reserved)
+        else:
+            pool = [p for p in players if p.position_group == pg and p.id not in selected_ids]
+            for p in pool[:total]:
+                selected.append(p)
+                selected_ids.add(p.id)
 
     for i, p in enumerate(selected):
         p.id = i + 1

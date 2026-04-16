@@ -43,6 +43,12 @@ SQUAD_COMPOSITION = {
 SQUAD_SIZE = sum(SQUAD_COMPOSITION.values())  # 26
 NUM_TEAMS = 8
 
+SUB_POSITION_MINIMUMS: dict["PositionGroup", dict[str, int]] = {
+    PositionGroup.DEF: {"CB": 1, "LB": 1, "RB": 1},
+    PositionGroup.MID: {"CDM": 1, "CM": 1, "CAM": 1, "LM": 1, "RM": 1},
+    PositionGroup.FWD: {"ST": 1, "LW": 1, "RW": 1},
+}
+
 TEAM_FLAGS = {
     "Franca": "\U0001f1eb\U0001f1f7",
     "Espanha": "\U0001f1ea\U0001f1f8",

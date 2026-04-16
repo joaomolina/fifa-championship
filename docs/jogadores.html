@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogadores - Copa EA FC 26</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .filter-btn { transition: all 0.15s; }
+        .filter-btn.active { background: #00B4D8; color: #fff; border-color: #00B4D8; }
+        .sort-header { cursor: pointer; user-select: none; white-space: nowrap; }
+        .sort-header:hover { color: #00B4D8; }
+        .sort-header .arrow { opacity: 0.3; font-size: 10px; }
+        .sort-header.active-sort .arrow { opacity: 1; color: #facc15; }
+        .player-row:hover { background: #1e293b; }
+        .stat-bar { height: 4px; border-radius: 2px; background: #1e293b; position: relative; overflow: hidden; }
+        .stat-bar-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+    </style>
+</head>
+<body class="bg-[#020617] text-[#e2e8f0] min-h-screen flex flex-col">
+    <div id="header"></div>
+    <main id="content" class="max-w-7xl mx-auto px-4 py-8 flex-1 w-full">
+        <p class="text-[#64748b] text-center py-20">Carregando...</p>
+    </main>
+    <div id="footer"></div>
+    <script src="js/app.js"></script>
+    <script>
+        App.init();
+
+        const STAT_COLS = [
+            { key: 'overall', label: 'OVR', short: 'OVR' },
+            { key: 'pace', label: 'Pace', short: 'PAC' },
+            { key: 'shooting', label: 'Chute', short: 'SHO' },
+            { key: 'passing', label: 'Passe', short: 'PAS' },
+            { key: 'dribbling', label: 'Drible', short: 'DRI' },
+            { key: 'defending', label: 'Defesa', short: 'DEF' },
+            { key: 'physical', label: 'Fisico', short: 'PHY' },
+        ];
+
+        const POS_GROUPS = {
+            'Todos': null,
+            'GK': ['GK'],
+            'DEF': ['CB', 'LB', 'RB'],
+            'MID': ['CDM', 'CM', 'CAM', 'LM', 'RM'],
+            'FWD': ['ST', 'LW', 'RW'],
+        };
+
+        const SUB_POSITIONS = ['GK','CB','LB','RB','CDM','CM','CAM','LM','RM','ST','LW','RW'];
+
+        let allPlayers = [];
+        let teamsData = [];
+        let teamMap = {};
+        let filters = { group: 'Todos', subPos: null, team: null, search: '' };
+        let sort = { key: 'overall', dir: 'desc' };
+
+        function statColor(val) {
+            if (val >= 90) return '#facc15';
+            if (val >= 80) return '#22c55e';
+            if (val >= 70) return '#00B4D8';
+            if (val >= 60) return '#94a3b8';
+            return '#64748b';
+        }
+
+        function statBarHtml(val) {
+            const pct = Math.min(100, Math.max(0, val));
+            return `<div class="stat-bar w-full"><div class="stat-bar-fill" style="width:${pct}%;background:${statColor(val)}"></div></div>`;
+        }
+
+        function getFiltered() {
+            let list = [...allPlayers];
+
+            if (filters.group && filters.group !== 'Todos') {
+                const positions = POS_GROUPS[filters.group];
+                list = list.filter(p => positions.includes(p.position));
+            }
+
+            if (filters.subPos) {
+                list = list.filter(p => p.position === filters.subPos);
+            }
+
+            if (filters.team) {
+                list = list.filter(p => p.team_id === filters.team);
+            }
+
+            if (filters.search) {
+                const q = filters.search.toLowerCase();
+                list = list.filter(p => p.name.toLowerCase().includes(q) || (p.nationality || '').toLowerCase().includes(q));
+            }
+
+            list.sort((a, b) => {
+                const va = a[sort.key] || 0, vb = b[sort.key] || 0;
+                return sort.dir === 'desc' ? vb - va : va - vb;
+            });
+
+            return list;
+        }
+
+        function render() {
+            const filtered = getFiltered();
+
+            const groupBtns = Object.keys(POS_GROUPS).map(g => {
+                const active = filters.group === g ? 'active' : '';
+                return `<button class="filter-btn px-3 py-1.5 rounded-lg border border-[#334155] text-sm font-medium ${active}" onclick="setGroup('${g}')">${g}</button>`;
+            }).join('');
+
+            let subPosBtns = '';
+            if (filters.group && filters.group !== 'Todos') {
+                const subs = POS_GROUPS[filters.group];
+                subPosBtns = subs.map(sp => {
+                    const active = filters.subPos === sp ? 'active' : '';
+                    return `<button class="filter-btn px-2.5 py-1 rounded border border-[#334155] text-xs font-medium ${active}" onclick="setSubPos('${sp}')">${sp}</button>`;
+                }).join('');
+                subPosBtns = `<div class="flex gap-2 flex-wrap">${subPosBtns}</div>`;
+            }
+
+            const teamOptions = teamsData.map(t =>
+                `<option value="${t.id}" ${filters.team === t.id ? 'selected' : ''}>${App.flag(t.name)} ${t.name}</option>`
+            ).join('');
+
+            const arrow = (key) => {
+                if (sort.key !== key) return '<span class="arrow ml-1">&#9650;</span>';
+                return sort.dir === 'desc'
+                    ? '<span class="arrow ml-1">&#9660;</span>'
+                    : '<span class="arrow ml-1">&#9650;</span>';
+            };
+            const sortClass = (key) => sort.key === key ? 'active-sort' : '';
+
+            const rows = filtered.map(p => {
+                const team = teamMap[p.team_id];
+                const teamLabel = team ? `${App.flag(team.name)} ${team.name}` : '-';
+                const ovrColor = p.overall >= 85 ? 'text-[#facc15]' : p.overall >= 80 ? 'text-[#22c55e]' : 'text-[#cbd5e1]';
+                const posGroupClass = p.position_group === 'GK' ? 'bg-[#d97706]' :
+                    p.position_group === 'DEF' ? 'bg-[#2563eb]' :
+                    p.position_group === 'MID' ? 'bg-[#16a34a]' : 'bg-[#dc2626]';
+
+                const statCells = STAT_COLS.slice(1).map(sc => {
+                    const v = p[sc.key] || 0;
+                    return `<td class="py-2.5 px-1 text-center">
+                        <span class="text-sm font-semibold" style="color:${statColor(v)}">${v}</span>
+                        <div class="mt-0.5">${statBarHtml(v)}</div>
+                    </td>`;
+                }).join('');
+
+                return `<tr class="player-row border-b border-[#1e293b] transition">
+                    <td class="py-2.5 pr-2">
+                        <span class="text-white font-medium text-sm">${p.name}</span>
+                        <span class="text-[#475569] text-xs ml-1">${p.nationality || ''}</span>
+                    </td>
+                    <td class="py-2.5 text-center"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${posGroupClass}">${p.position}</span></td>
+                    <td class="py-2.5 text-center"><span class="font-bold text-sm ${ovrColor}">${p.overall}</span></td>
+                    <td class="py-2.5 text-sm">${teamLabel}</td>
+                    ${statCells}
+                </tr>`;
+            }).join('');
+
+            App.html('content', `
+                <h1 class="text-2xl font-bold text-white mb-6">Buscar Jogadores</h1>
+
+                <div class="card p-4 mb-6 space-y-4">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <div class="flex gap-2 flex-wrap">${groupBtns}</div>
+                        <div class="h-6 w-px bg-[#334155] hidden sm:block"></div>
+                        <select id="teamFilter" onchange="setTeam(this.value)" class="bg-[#0f172a] text-white border border-[#334155] rounded-lg px-3 py-1.5 text-sm focus:border-[#00B4D8] focus:outline-none">
+                            <option value="">Todas as selecoes</option>
+                            ${teamOptions}
+                        </select>
+                        <input type="text" id="searchInput" value="${filters.search}" placeholder="Buscar por nome..."
+                            oninput="setSearch(this.value)"
+                            class="bg-[#0f172a] text-white border border-[#334155] rounded-lg px-3 py-1.5 text-sm focus:border-[#00B4D8] focus:outline-none flex-1 min-w-[180px]">
+                    </div>
+                    ${subPosBtns}
+                </div>
+
+                <div class="card p-2 overflow-x-auto">
+                    <p class="text-xs text-[#475569] px-3 py-2">${filtered.length} jogadores encontrados</p>
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="text-[#94a3b8] border-b border-[#334155] text-xs">
+                                <th class="sort-header py-2 text-left pr-2 ${sortClass('name')}" onclick="setSort('name')">Nome${arrow('name')}</th>
+                                <th class="py-2 text-center w-14">Pos</th>
+                                <th class="sort-header py-2 text-center w-14 ${sortClass('overall')}" onclick="setSort('overall')">OVR${arrow('overall')}</th>
+                                <th class="py-2 text-left">Selecao</th>
+                                <th class="sort-header py-2 text-center w-16 ${sortClass('pace')}" onclick="setSort('pace')">PAC${arrow('pace')}</th>
+                                <th class="sort-header py-2 text-center w-16 ${sortClass('shooting')}" onclick="setSort('shooting')">SHO${arrow('shooting')}</th>
+                                <th class="sort-header py-2 text-center w-16 ${sortClass('passing')}" onclick="setSort('passing')">PAS${arrow('passing')}</th>
+                                <th class="sort-header py-2 text-center w-16 ${sortClass('dribbling')}" onclick="setSort('dribbling')">DRI${arrow('dribbling')}</th>
+                                <th class="sort-header py-2 text-center w-16 ${sortClass('defending')}" onclick="setSort('defending')">DEF${arrow('defending')}</th>
+                                <th class="sort-header py-2 text-center w-16 ${sortClass('physical')}" onclick="setSort('physical')">PHY${arrow('physical')}</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>
+            `);
+        }
+
+        window.setGroup = function(g) {
+            filters.group = g;
+            filters.subPos = null;
+            render();
+        };
+
+        window.setSubPos = function(sp) {
+            filters.subPos = filters.subPos === sp ? null : sp;
+            render();
+        };
+
+        window.setTeam = function(val) {
+            filters.team = val ? parseInt(val) : null;
+            render();
+        };
+
+        window.setSearch = function(val) {
+            filters.search = val;
+            render();
+        };
+
+        window.setSort = function(key) {
+            if (key === 'name') {
+                if (sort.key === 'name') sort.dir = sort.dir === 'asc' ? 'desc' : 'asc';
+                else { sort.key = 'name'; sort.dir = 'asc'; }
+            } else {
+                if (sort.key === key) sort.dir = sort.dir === 'desc' ? 'asc' : 'desc';
+                else { sort.key = key; sort.dir = 'desc'; }
+            }
+            render();
+        };
+
+        (async () => {
+            const [teams, players] = await Promise.all([App.loadJSON('teams'), App.loadJSON('players')]);
+            teamsData = teams;
+            allPlayers = players;
+            teamMap = {};
+            teams.forEach(t => teamMap[t.id] = t);
+
+            const paramPos = App.getParam('pos');
+            if (paramPos) {
+                const upper = paramPos.toUpperCase();
+                if (SUB_POSITIONS.includes(upper)) {
+                    for (const [g, subs] of Object.entries(POS_GROUPS)) {
+                        if (subs && subs.includes(upper)) { filters.group = g; filters.subPos = upper; break; }
+                    }
+                } else if (POS_GROUPS[upper]) {
+                    filters.group = upper;
+                }
+            }
+
+            const paramTeam = App.getParam('team');
+            if (paramTeam) filters.team = parseInt(paramTeam);
+
+            render();
+        })();
+    </script>
+</body>
+</html>

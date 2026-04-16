@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "window": 1,
+    "team_a_id": 3,
+    "team_b_id": 4,
+    "player_a_id": 43,
+    "player_b_id": 45,
+    "timestamp": "2026-04-16T09:20:29.498370"
+  },
+  {
+    "id": 2,
+    "window": 1,
+    "team_a_id": 4,
+    "team_b_id": 8,
+    "player_a_id": 163,
+    "player_b_id": 184,
+    "timestamp": "2026-04-16T09:20:29.498370"
+  }
+]

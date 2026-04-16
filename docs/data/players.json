@@ -728,7 +728,7 @@
     "defending": 80,
     "physical": 74,
     "photo_url": "",
-    "team_id": 3
+    "team_id": 4
   },
   {
     "id": 44,
@@ -762,7 +762,7 @@
     "defending": 78,
     "physical": 82,
     "photo_url": "",
-    "team_id": 4
+    "team_id": 3
   },
   {
     "id": 46,
@@ -2768,7 +2768,7 @@
     "defending": 42,
     "physical": 73,
     "photo_url": "",
-    "team_id": 4
+    "team_id": 8
   },
   {
     "id": 164,
@@ -3125,7 +3125,7 @@
     "defending": 38,
     "physical": 77,
     "photo_url": "",
-    "team_id": 8
+    "team_id": 4
   },
   {
     "id": 185,

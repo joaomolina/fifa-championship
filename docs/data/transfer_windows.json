@@ -3,7 +3,7 @@
     "number": 1,
     "phase": "group",
     "after_match_day": 0,
-    "is_open": false,
+    "is_open": true,
     "is_completed": false,
     "max_trades": 3
   },

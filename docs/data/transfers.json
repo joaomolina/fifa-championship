@@ -16,5 +16,14 @@
     "player_a_id": 163,
     "player_b_id": 184,
     "timestamp": "2026-04-16T09:20:29.498370"
+  },
+  {
+    "id": 3,
+    "window": 1,
+    "team_a_id": 1,
+    "team_b_id": 8,
+    "player_a_id": 91,
+    "player_b_id": 177,
+    "timestamp": "2026-04-17T09:20:29.498370"
   }
 ]
